@@ -26,14 +26,17 @@
     <property name="title">
      <string>图像预览</string>
     </property>
-    <widget class="QGraphicsView" name="graphicsView">
+    <widget class="QLabel" name="image_label">
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>20</y>
+       <y>30</y>
        <width>461</width>
-       <height>181</height>
+       <height>171</height>
       </rect>
+     </property>
+     <property name="text">
+      <string/>
      </property>
     </widget>
    </widget>
@@ -61,14 +64,17 @@
      <property name="title">
       <string>照片</string>
      </property>
-     <widget class="QGraphicsView" name="graphicsView_2">
+     <widget class="QLabel" name="image_label2">
       <property name="geometry">
        <rect>
-        <x>10</x>
-        <y>20</y>
-        <width>171</width>
-        <height>141</height>
+        <x>30</x>
+        <y>30</y>
+        <width>141</width>
+        <height>121</height>
        </rect>
+      </property>
+      <property name="text">
+       <string>头像预览</string>
       </property>
      </widget>
     </widget>
