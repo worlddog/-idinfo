@@ -41,6 +41,7 @@ private:
 
 	IplImage *Igray, *Iat;
 
+	IplImage * detect_img;
 	/////////////////////////////////////
 	Mat imgSrc;
 
@@ -63,9 +64,11 @@ private:
 	void getParityBit(vector<int> & char_result);  //获得校验位
 
 	///////////////////////////////////////
-
-
-
+	//面部和眼睛检测并绘制矩形框，参数一次为图片数据，面部和眼部的级联分类器，检测时允许的图片缩小比例  
+	void detectAndDraw(Mat& img, CascadeClassifier& faceCascade,double scale);
+	void findface(QString &imagefile);
+	
+	//////////////////////
 };
 
 #endif // MAINWINDOW_H
