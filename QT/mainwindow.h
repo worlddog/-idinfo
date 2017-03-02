@@ -64,7 +64,10 @@ private:
 	void getParityBit(vector<int> & char_result);  //获得校验位
 	/////
 	//显示图片在label
+	Mat srcimg;
+	Mat tempmat;
 	void show_img_label(QString &filename);
+	void display(cv::Mat mat);
 		///////////////////////////////////////
 	//面部和眼睛检测并绘制矩形框，参数一次为图片数据，面部和眼部的级联分类器，检测时允许的图片缩小比例  
 	void detectAndDraw(Mat& img, CascadeClassifier& faceCascade,double scale);

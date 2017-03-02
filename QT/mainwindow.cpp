@@ -47,7 +47,7 @@ void MainWindow::on_pushButton_clicked()
 
 	if (!imagefile.isNull())
 	{
-		show_img_label(imagefile);
+		show_img_label(imagefile);//显示图像函数
 		Ada_Thresgold(imagefile.toLocal8Bit().data());
 		findface(imagefile);
 		
@@ -63,17 +63,32 @@ void MainWindow::on_pushButton_clicked()
 void MainWindow::show_img_label(QString &filename)
 {
 
-	this->image = cvLoadImage(filename.toLocal8Bit().data(), 1);
+	srcimg = cvLoadImage(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_COLOR);
+	
 
-	this->qImage = new QImage(QSize(this->image->width, this->image->height), QImage::Format_RGB888);
-	this->tempImage = cvCreateImageHeader(cvSize(this->image->width, this->image->height), 8, 3);
-	this->tempImage->imageData = (char*)(this->qImage->bits());// tempImage->imageData指向的存放图像实体区域的指针, qlmage->bits() 是QT中 图像实体区域指针，现在让tempImage->imageData 也指向 qlmage->bits() 指向的区域
-	cvCopy(this->image, this->tempImage, 0);// 把图像数据从this->image 拷贝到 this->tempImage指向的区域，而this->tempImage此时指向的区域和this->qImage->bits()所指的是同一个区域
-	cvCvtColor(this->tempImage, this->tempImage, CV_BGR2RGB); //这个是颜色空间转换
-	this->ui->image_label->setPixmap((QPixmap::fromImage(*this->qImage)).scaled(this->ui->image_label->size()));// 这句话就是你想要的 把opencv处理出来的图片放到 qt 指定的方框里了
-
+	
+	display(srcimg);
 }
-
+void MainWindow::display(cv::Mat mat)
+{
+	cv::Mat rgb;
+	QImage img;
+	if (mat.channels() == 3)
+	{
+		cv::cvtColor(mat, rgb, CV_BGR2RGB);
+		img = QImage((const uchar*)(rgb.data), rgb.cols, rgb.rows, rgb.cols*rgb.channels(), QImage::Format_RGB888);
+		
+	}
+	else
+	{
+		img = QImage((const uchar*)(mat.data), mat.cols, mat.rows, mat.cols*mat.channels(), QImage::Format_Indexed8);
+	}
+	
+	ui->image_label->setPixmap(QPixmap::fromImage(img).scaled(ui->image_label->width(), ui->image_label->height()));
+	
+	ui->image_label->resize(ui->image_label->pixmap()->size());
+	ui->image_label->show();
+}
 
 //1、获取图片R通道
 Mat MainWindow::getRplane(const Mat &in)
