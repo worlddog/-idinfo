@@ -62,8 +62,10 @@ private:
 	void classify(CvANN_MLP& ann, vector<Mat> &char_Mat, vector<int> & char_result);
 
 	void getParityBit(vector<int> & char_result);  //获得校验位
-
-	///////////////////////////////////////
+	/////
+	//显示图片在label
+	void show_img_label(QString &filename);
+		///////////////////////////////////////
 	//面部和眼睛检测并绘制矩形框，参数一次为图片数据，面部和眼部的级联分类器，检测时允许的图片缩小比例  
 	void detectAndDraw(Mat& img, CascadeClassifier& faceCascade,double scale);
 	void findface(QString &imagefile);
