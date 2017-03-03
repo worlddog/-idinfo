@@ -111,33 +111,6 @@ Mat MainWindow::getRplane(const Mat &in)
 
 
 
-//人脸检测与识别
-
-void MainWindow::detectAndDraw(Mat& img, CascadeClassifier& faceCascade, double scale)
-{
-	int i = 0;
-	double t = 0;
-	vector<Rect> faces;//用来存储检测出来的面部数据，我们无法确定个数，因此定义成vector  
-	Mat gray, smallImg(cvRound(img.rows / scale), cvRound(img.cols / scale), CV_8UC1);//smallImg已缩放  
-
-	cvtColor(img, gray, CV_BGR2GRAY);//图片颜色格式转化，CV_BGR2GRAY是从BGR到gray，彩色到灰色  
-	cv::resize(gray, smallImg, smallImg.size(), 0, 0, INTER_LINEAR);//将灰色图像适应大小到smallImg中  
-	equalizeHist(smallImg, smallImg);//加强对比度，提高检测准确率  
-
-	t = (double)cvGetTickCount();//获取当前时间  
-	//使用级联分类器进行识别，参数为灰度图片，面部数组，检测单元的增长率，是否融合检测出的矩形，最小检测单元大小  
-	faceCascade.detectMultiScale(smallImg, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(30, 30));
-	for (vector<Rect>::const_iterator r = faces.begin(); r != faces.end(); r++, i++)
-	{
-		cv::rectangle(img, *r, Scalar(0, 255, 0), 1, 1, 0);//在img上绘制出检测到的面部矩形框，绿色框  
-
-	}
-
-	cv::imshow("result", img);//将img显示到result窗口  
-
-
-}
-
 
 //2,自适应二值阈值化
 void MainWindow::Ada_Thresgold(const char* filename)
@@ -162,6 +135,48 @@ void MainWindow::Ada_Thresgold(const char* filename)
 
 }    
 
+//人脸检测与识别
+
+void MainWindow::detectAndDraw(Mat& img, CascadeClassifier& faceCascade, double scale)
+{
+	Mat roi_img;
+
+	int i = 0;
+	double t = 0;
+	vector<Rect> faces;//用来存储检测出来的面部数据，我们无法确定个数，因此定义成vector  
+	Mat gray, smallImg(cvRound(img.rows / scale), cvRound(img.cols / scale), CV_8UC1);//smallImg已缩放  
+
+	cvtColor(img, gray, CV_BGR2GRAY);//图片颜色格式转化，CV_BGR2GRAY是从BGR到gray，彩色到灰色  
+	cv::resize(gray, smallImg, smallImg.size(), 0, 0, INTER_LINEAR);//将灰色图像适应大小到smallImg中  
+	equalizeHist(smallImg, smallImg);//加强对比度，提高检测准确率  
+
+	t = (double)cvGetTickCount();//获取当前时间  
+	//使用级联分类器进行识别，参数为灰度图片，面部数组，检测单元的增长率，是否融合检测出的矩形，最小检测单元大小  
+	faceCascade.detectMultiScale(smallImg, faces, 1.1, 2, 0 | CV_HAAR_SCALE_IMAGE, Size(50, 100));
+	for (vector<Rect>::const_iterator r = faces.begin(); r != faces.end(); r++, i++)
+	{
+	//	cv::rectangle(img, *r, Scalar(0, 255, 0), 1, 8, 0);//在img上绘制出检测到的面部矩形框，绿色框  
+		
+
+//控制矩形框位置
+		int RectPosition_x = faces[0].x;
+		int RectPosition_y = faces[0].y;
+		int RectPosition_w = faces[0].width;
+		int RectPosition_h = faces[0].height;
+		Rect imgr(RectPosition_x-20, RectPosition_y=40, RectPosition_w + 20, RectPosition_h+50);
+
+		cv::rectangle(img, imgr, Scalar(0, 255, 0), 1, 8, 0);
+	//控制矩形框位置	
+	//	Rect rect(a.x,a.y,50, 50); // (左上x, 左上y, 宽度, 高度)  
+	//	img(rect).copyTo(roi_img); //拷贝矩形区域  
+	//	imshow("cut", roi_img);
+	}
+
+	cv::imshow("result", img);//将img显示到result窗口  
+
+	
+}
+
 
 void MainWindow::findface(QString &imagefile)
 {
@@ -181,5 +196,7 @@ void MainWindow::findface(QString &imagefile)
 	{
 		detectAndDraw(image, faceCascade, scale);//进行识别  
 	}
+
+
 
 }
