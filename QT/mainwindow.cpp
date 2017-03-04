@@ -46,7 +46,7 @@ void MainWindow::on_pushButton_clicked()
 	QString imagefile = QFileDialog::getOpenFileName(this, "打开图像", QDir::currentPath(), "Document files (*.jpg *.bmp);;All files(*.*)");
 
 	if (!imagefile.isNull())
-	{
+	{ 
 		show_img_label(imagefile);//显示图像函数
 		Ada_Thresgold(imagefile.toLocal8Bit().data());
 		findface(imagefile);
@@ -163,18 +163,21 @@ void MainWindow::detectAndDraw(Mat& img, CascadeClassifier& faceCascade, double 
 		int RectPosition_y = faces[0].y;
 		int RectPosition_w = faces[0].width;
 		int RectPosition_h = faces[0].height;
-		Rect imgr(RectPosition_x-20, RectPosition_y=40, RectPosition_w + 20, RectPosition_h+50);
+		Rect imgr(RectPosition_x-20, RectPosition_y-20, RectPosition_w + 30, RectPosition_h+50);
 
 		cv::rectangle(img, imgr, Scalar(0, 255, 0), 1, 8, 0);
 	//控制矩形框位置	
 	//	Rect rect(a.x,a.y,50, 50); // (左上x, 左上y, 宽度, 高度)  
-	//	img(rect).copyTo(roi_img); //拷贝矩形区域  
+		img(imgr).copyTo(roi_img); //拷贝矩形区域  
 	//	imshow("cut", roi_img);
 	}
 
 	cv::imshow("result", img);//将img显示到result窗口  
 
-	
+//	cv::imshow("cut", roi_img);//显示img
+
+	show_img_label2(roi_img);
+
 }
 
 
@@ -197,6 +200,30 @@ void MainWindow::findface(QString &imagefile)
 		detectAndDraw(image, faceCascade, scale);//进行识别  
 	}
 
+
+
+}
+
+//显示图像在头像框
+void MainWindow::show_img_label2(Mat &src)
+{
+	cv::Mat rgb;
+	QImage img;
+	if (src.channels() == 3)
+	{
+		cv::cvtColor(src, rgb, CV_BGR2RGB);
+		img = QImage((const uchar*)(rgb.data), rgb.cols, rgb.rows, rgb.cols*rgb.channels(), QImage::Format_RGB888);
+
+	}
+	else
+	{
+		img = QImage((const uchar*)(src.data), src.cols, src.rows, src.cols*src.channels(), QImage::Format_Indexed8);
+	}
+
+	ui->image_label2->setPixmap(QPixmap::fromImage(img).scaled(ui->image_label2->width(), ui->image_label2->height()));
+
+	ui->image_label2->resize(ui->image_label2->pixmap()->size());
+	ui->image_label2->show();
 
 
 }

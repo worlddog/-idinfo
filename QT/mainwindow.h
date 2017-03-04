@@ -67,7 +67,10 @@ private:
 	Mat srcimg;
 	Mat tempmat;
 	void show_img_label(QString &filename);
+	
 	void display(cv::Mat mat);
+	//显示图片在头像框
+	void show_img_label2(Mat &src);
 		///////////////////////////////////////
 	//面部和眼睛检测并绘制矩形框，参数一次为图片数据，面部和眼部的级联分类器，检测时允许的图片缩小比例  
 	void detectAndDraw(Mat& img, CascadeClassifier& faceCascade,double scale);
