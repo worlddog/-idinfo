@@ -46,7 +46,7 @@ private:
 	Mat imgSrc;
 
 	Mat getRplane(const Mat & in);  //获得图片的R通道
-	Mat Ada_Thresgold(const char* filename);//自适应二值阈值化
+	void Ada_Thresgold(const char* filename);//自适应二值阈值化
 	void OstuBeresenThreshold(const Mat & in, Mat & out);
 	void posDetect(const Mat &in, vector<RotatedRect> & rects);
 	bool isEligible(const RotatedRect & candidate);
@@ -66,11 +66,10 @@ private:
 	//显示图片在label
 	Mat srcimg;
 	Mat tempmat;
-	Mat show_img_label(QString &filename);
+	void show_img_label(QString &filename);
 	
 	void display(cv::Mat mat);
 	//显示图片在头像框
-	Mat roi_img;
 	void show_img_label2(Mat &src);
 		///////////////////////////////////////
 	//面部和眼睛检测并绘制矩形框，参数一次为图片数据，面部和眼部的级联分类器，检测时允许的图片缩小比例  
@@ -78,17 +77,6 @@ private:
 	void findface(QString &imagefile);
 	
 	//////////////////////
-	//图像膨胀与腐蚀 
-	void posDetect(const char *filename, const Mat &in, vector<RotatedRect> & rects);
-	
-
-
-
-
-
-
-
-
 };
 
 #endif // MAINWINDOW_H

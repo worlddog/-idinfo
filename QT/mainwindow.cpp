@@ -47,23 +47,9 @@ void MainWindow::on_pushButton_clicked()
 
 	if (!imagefile.isNull())
 	{ 
-	Mat srcimg=	show_img_label(imagefile);//显示图像函数
-	Mat thresgolg_img =	Ada_Thresgold(imagefile.toLocal8Bit().data());
+		show_img_label(imagefile);//显示图像函数
+		Ada_Thresgold(imagefile.toLocal8Bit().data());
 		findface(imagefile);
-		bitwise_not(thresgolg_img, thresgolg_img);//图像取反
-		imshow("fan", thresgolg_img);
-		//区域识别
-
-		Mat imgRplane = getRplane(srcimg); //获得原始图像R分量
-		vector <RotatedRect>  rects;
-		posDetect(imagefile.toLocal8Bit().data(), imgRplane, rects);  //获得身份证号码区域
-
-
-
-
-
-
-
 		
 	}
 	else
@@ -74,12 +60,14 @@ void MainWindow::on_pushButton_clicked()
 }
 
 //show img label
-Mat MainWindow::show_img_label(QString &filename)
+void MainWindow::show_img_label(QString &filename)
 {
 
 	srcimg = cvLoadImage(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_COLOR);
+	
+
+	
 	display(srcimg);
-	return srcimg;
 }
 void MainWindow::display(cv::Mat mat)
 {
@@ -125,7 +113,7 @@ Mat MainWindow::getRplane(const Mat &in)
 
 
 //2,自适应二值阈值化
-Mat MainWindow::Ada_Thresgold(const char* filename)
+void MainWindow::Ada_Thresgold(const char* filename)
 {
 	int adaptive_method = CV_ADAPTIVE_THRESH_MEAN_C ;
 	int threshold_type = CV_THRESH_BINARY;
@@ -144,14 +132,14 @@ Mat MainWindow::Ada_Thresgold(const char* filename)
 	//显示窗口
 	cvNamedWindow("Ada_Th", 1);
 	cvShowImage("Ada_Th", Iat);
-	return Iat;
+
 }    
 
 //人脸检测与识别
 
 void MainWindow::detectAndDraw(Mat& img, CascadeClassifier& faceCascade, double scale)
 {
-	
+	Mat roi_img;
 
 	int i = 0;
 	double t = 0;
@@ -177,7 +165,7 @@ void MainWindow::detectAndDraw(Mat& img, CascadeClassifier& faceCascade, double 
 		int RectPosition_h = faces[0].height;
 		Rect imgr(RectPosition_x-20, RectPosition_y-20, RectPosition_w + 30, RectPosition_h+50);
 
-		cv::rectangle(img, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
+		cv::rectangle(img, imgr, Scalar(0, 255, 0), 1, 8, 0);
 	//控制矩形框位置	
 	//	Rect rect(a.x,a.y,50, 50); // (左上x, 左上y, 宽度, 高度)  
 		img(imgr).copyTo(roi_img); //拷贝矩形区域  
@@ -219,7 +207,6 @@ void MainWindow::findface(QString &imagefile)
 //显示图像在头像框
 void MainWindow::show_img_label2(Mat &src)
 {
-	ui->image_label2->clear();
 	cv::Mat rgb;
 	QImage img;
 	if (src.channels() == 3)
@@ -239,84 +226,4 @@ void MainWindow::show_img_label2(Mat &src)
 	ui->image_label2->show();
 
 
-}
-
-
-//区域识别 //输入彩色原图
-
-
-void MainWindow::posDetect(const char* filename,const Mat &in, vector<RotatedRect> & rects)
-
-{
-
-//	Mat threshold_R;
-//	OstuBeresenThreshold(in, threshold_R); //二值化
-	Mat threshold_R = Ada_Thresgold(filename);
-
-	Mat imgInv(threshold_R.size(), threshold_R.type(), cv::Scalar(255));
-//	Mat threshold_Inv = imgInv - threshold_R; //黑白色反转，即背景为黑色
-	Mat threshold_Inv;
-		
-	bitwise_not(threshold_R, threshold_Inv);
-
-
-
-	Mat element = getStructuringElement(MORPH_RECT, Size(15, 3));  //闭形态学的结构元素
-	morphologyEx(threshold_Inv, threshold_Inv, CV_MOP_CLOSE, element);
-
-	vector< vector <Point> > contours;
-	findContours(threshold_Inv, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);//只检测外轮廓
-	//对候选的轮廓进行进一步筛选
-	vector< vector <Point> > ::iterator itc = contours.begin();
-	vector< vector <Point> > ::iterator itc2 = contours.begin();
-	while (itc != contours.end())
-	{
-		RotatedRect mr = minAreaRect(Mat(*itc)); //返回每个轮廓的最小有界矩形区域
-		if (!isEligible(mr))  //判断矩形轮廓是否符合要求
-		{
-			itc = contours.erase(itc);
-			
-		}
-		else
-		{
-			rects.push_back(mr);
-			++itc;
-		}
-	}
-	
-	
-	//测试是否找到了号码区域
-	    Mat out;
-	    in.copyTo(out);
-
-	    Point2f vertices[4];
-	    rects[0].points(vertices);
-	    for (int i = 0; i < 4; i++)
-	    line(out, vertices[i], vertices[(i+1)%4], Scalar(0,0,0));//画黑色线条
-
-	   imshow("Test_Rplane" ,out);
-	    waitKey(0);
-		
-
-}
-
-
-bool MainWindow::isEligible(const RotatedRect &candidate)
-{
-	float error = 0.2;
-	const float aspect = 4.5 / 0.3; //长宽比
-	int min = 10 * aspect * 10; //最小区域
-	int max = 50 * aspect * 50;  //最大区域
-	float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
-	float rmax = aspect + aspect*error; //考虑误差后的最大长宽比
-
-	int area = candidate.size.height * candidate.size.width;
-	float r = (float)candidate.size.width / (float)candidate.size.height;
-	if (r <1)
-		r = 1 / r;
-
-	if ((area < min || area > max) || (r< rmin || r > rmax)) //满足该条件才认为该candidate为车牌区域
-		return false;
-	else
-		return true;
 }
