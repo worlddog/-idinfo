@@ -50,7 +50,7 @@ private:
 	void OstuBeresenThreshold(const Mat & in, Mat & out);
 	void posDetect(const Mat &in, vector<RotatedRect> & rects);
 	bool isEligible(const RotatedRect & candidate);
-	void normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area);
+	void normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area);//获得身份证号码字符矩阵
 	void char_segment(const Mat & inputImg, vector <Mat>& dst_mat); //得到16*20的标准字符分割图像
 	void getAnnXML();  //获得神经网络的训练矩阵和标签矩阵，
 
