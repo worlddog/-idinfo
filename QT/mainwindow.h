@@ -12,6 +12,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/ml/ml.hpp"
+class QLabel;
 using namespace cv; //使用OPENCV命名空间
 
 namespace Ui {
@@ -33,6 +34,9 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+	QLabel *statusLabel;
+	
+
 
 	QImage * qImage; // qt 中的图片类型指针
 	IplImage * image;  // opencv里的图片类型指针

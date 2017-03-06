@@ -16,6 +16,8 @@
 #include <stdio.h>  
 #include<qmessagebox.h>
 #include<qdebug.h>
+#include <QLabel>
+
 
 
 using namespace std;
@@ -26,7 +28,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
 	
+	QDir run_dir;
+	
     ui->setupUi(this);
+	ui->statusBar->showMessage(QApplication::applicationDirPath());
 }
 
 MainWindow::~MainWindow()
@@ -49,6 +54,7 @@ void MainWindow::on_pushButton_clicked()
 	if (!imagefile.isNull())
 	{ 
 	Mat srcimg=	show_img_label(imagefile);//显示图像函数
+	
 	Mat thresgolg_img =	Ada_Thresgold(imagefile.toLocal8Bit().data());
 		findface(imagefile);
 		bitwise_not(thresgolg_img, thresgolg_img);//图像取反
@@ -148,8 +154,6 @@ Mat MainWindow::getRplane(const Mat &in)
 		return splitBGR[2];
 
 }
-
-
 
 
 //2,自适应二值阈值化
@@ -273,7 +277,7 @@ void MainWindow::show_img_label2(Mat &src)
 //区域识别 //输入彩色原图
 
 
-void MainWindow::posDetect(const char* filename,const Mat &in, vector<RotatedRect> & rects)
+void MainWindow::posDetect(const char* filename,const Mat &in, vector<RotatedRect> & rects) //寻找号码区域
 
 {
 
@@ -323,13 +327,10 @@ void MainWindow::posDetect(const char* filename,const Mat &in, vector<RotatedRec
 	    line(out, vertices[i], vertices[(i+1)%4], Scalar(0,0,0));//画黑色线条
 
 	   imshow("Test_Rplane" ,out);
-
-		
-
 }
 
 
-bool MainWindow::isEligible(const RotatedRect &candidate)
+bool MainWindow::isEligible(const RotatedRect &candidate) //判定身份证号码区域
 {
 	float error = 0.2;
 	const float aspect = 4.5 / 0.3; //长宽比
@@ -347,7 +348,7 @@ bool MainWindow::isEligible(const RotatedRect &candidate)
 		return false;
 	else
 		return true;
-}
+}//判定身份证号码区域
 
 void MainWindow::normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area)
 {
