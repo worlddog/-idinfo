@@ -318,15 +318,32 @@ void MainWindow::posDetect(const char* filename,const Mat &in, vector<RotatedRec
 	
 	
 	//测试是否找到了号码区域
-	    Mat out;
+	Mat out, roi_img;
 	    in.copyTo(out);
-
+		vector<Rect> numbers;
 	    Point2f vertices[4];
 	    rects[0].points(vertices);
-	    for (int i = 0; i < 4; i++)
-	    line(out, vertices[i], vertices[(i+1)%4], Scalar(0,0,0));//画黑色线条
+		for (int i = 0; i < 4; i++)
+			//  line(out, vertices[i], vertices[(i+1)%4], Scalar(0,0,0));//画黑色线条
 
-	   imshow("Test_Rplane" ,out);
+			//	Point2f size = (10, 80);
+			//0 左下角 1 左上角 2 右上角 3 右下角
+			int px, y, pw, ph = 0;
+		int px = vertices[1].x-5;
+		int py = vertices[1].y-5;
+		int pw = (vertices[2].x - vertices[0].x)+10;
+		int ph = (vertices[3].y - vertices[2].y)+10;
+		Rect imgr(px, py, pw, ph);
+
+		cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
+		out(imgr).copyTo(roi_img); //拷贝矩形区域  
+		imshow("NUMBER", roi_img);
+	 //  imshow("NUMBER", out);
+	
+
+
+
+	   
 }
 
 

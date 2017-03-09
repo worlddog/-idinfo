@@ -53,7 +53,7 @@ private:
 	Mat Ada_Thresgold(const char* filename);//自适应二值阈值化
 	void OstuBeresenThreshold(const Mat & in, Mat & out);
 	void posDetect(const Mat &in, vector<RotatedRect> & rects);
-	bool isEligible(const RotatedRect & candidate);
+	bool isEligible(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
 	void normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area);
 	void char_segment(const Mat & inputImg, vector <Mat>& dst_mat); //得到16*20的标准字符分割图像
 	void getAnnXML();  //获得神经网络的训练矩阵和标签矩阵，
