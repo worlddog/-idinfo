@@ -53,17 +53,21 @@ void MainWindow::on_pushButton_clicked()
 
 	if (!imagefile.isNull())
 	{ 
-	Mat srcimg=	show_img_label(imagefile);//显示图像函数
+		Mat c_src = srcimg_color(imagefile);
+		Mat g_src = srcimg_gray(imagefile);
+
+
+		show_img_label(c_src);//显示图像函数
+		Ada_Thresgold(g_src);
+		
+		findface(c_src);
+	//	bitwise_not(thresgolg_img, thresgolg_img);//图像取反
 	
-	Mat thresgolg_img =	Ada_Thresgold(imagefile.toLocal8Bit().data());
-		findface(imagefile);
-		bitwise_not(thresgolg_img, thresgolg_img);//图像取反
-		imshow("fan", thresgolg_img);
 		//区域识别
 
-		Mat imgRplane = getRplane(srcimg); //获得原始图像R分量
-		vector <RotatedRect>  rects;
-		posDetect(imagefile.toLocal8Bit().data(), imgRplane, rects);  //获得身份证号码区域
+	//	Mat imgRplane = getRplane(srcimg); //获得原始图像R分量
+	//	vector <RotatedRect>  rects;
+	/*	posDetect( imgRplane, rects);  //获得身份证号码区域
 
 		Mat outputMat;
 		normalPosArea(imgRplane, rects[0], outputMat); //获得身份证号码字符矩阵
@@ -96,7 +100,7 @@ void MainWindow::on_pushButton_clicked()
 		ui->lineEdit_6->setText(id);
 
 	
-
+	*/
 
 		
 	}
@@ -108,12 +112,9 @@ void MainWindow::on_pushButton_clicked()
 }
 
 //show img label
-Mat MainWindow::show_img_label(QString &filename)
+void MainWindow::show_img_label(Mat &src)
 {
-
-	srcimg = cvLoadImage(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_COLOR);
 	display(srcimg);
-	return srcimg;
 }
 void MainWindow::display(cv::Mat mat)
 {
@@ -157,6 +158,7 @@ Mat MainWindow::getRplane(const Mat &in)
 
 
 //2,自适应二值阈值化
+/*
 Mat MainWindow::Ada_Thresgold(const char* filename)
 {
 	int adaptive_method = CV_ADAPTIVE_THRESH_MEAN_C ;
@@ -177,8 +179,25 @@ Mat MainWindow::Ada_Thresgold(const char* filename)
 	cvNamedWindow("Ada_Th", 1);
 	cvShowImage("Ada_Th", Iat);
 	return Iat;
-}    
+}    */
+Mat MainWindow::Ada_Thresgold(const Mat &src)
+{
+	int adaptive_method = CV_ADAPTIVE_THRESH_MEAN_C;
+	int threshold_type = CV_THRESH_BINARY;
+	int block_size = 75;
+	double offset = 15;
+	double param1 = 5;
 
+	Mat  out;
+
+	
+	//二值化
+
+	cv::adaptiveThreshold(src, out, 255, adaptive_method, threshold_type, block_size, offset);
+		//显示窗口
+		imshow("ff", out);
+	return out;
+}
 //人脸检测与识别
 
 void MainWindow::detectAndDraw(Mat& img, CascadeClassifier& faceCascade, double scale)
@@ -225,23 +244,24 @@ void MainWindow::detectAndDraw(Mat& img, CascadeClassifier& faceCascade, double 
 }
 
 
-void MainWindow::findface(QString &imagefile)
+void MainWindow::findface(Mat &src)
 {
 	//面部识别XML文件
 	string cascadeName = "D:\\opencv\\sources\\data\\haarcascades\\haarcascade_frontalface_alt.xml";
-	Mat image;//opencv中存储数据的基本单位，存储帧，图片等，代替旧版本的IplImage  
-	string inputName(imagefile.toLocal8Bit().data());//示例图片，放在当前目录  
+	//Mat image;//opencv中存储数据的基本单位，存储帧，图片等，代替旧版本的IplImage  
+	//string inputName(imagefile.toLocal8Bit().data());//示例图片，放在当前目录  
+
 	CascadeClassifier faceCascade;//定义级联分类器，由它们实现检测功能  
 	double scale = 1;//不缩小图片，这样可以提高准确率  
 	if (!faceCascade.load(cascadeName))//载入xml训练数据  
 	{
 		QMessageBox::information(NULL, "警告", "载入XML失败",  QMessageBox::Yes);
 	}
-	image = imread(inputName, CV_LOAD_IMAGE_COLOR);//读取图片，第二个参数说明是彩色图片  
+	//image = imread(inputName, CV_LOAD_IMAGE_COLOR);//读取图片，第二个参数说明是彩色图片  
 	cvNamedWindow("result", 1);//创建窗口，命名result，id为1  
-	if (!image.empty())
+	if (!src.empty())
 	{
-		detectAndDraw(image, faceCascade, scale);//进行识别  
+		detectAndDraw(src, faceCascade, scale);//进行识别  
 	}
 
 
@@ -277,13 +297,13 @@ void MainWindow::show_img_label2(Mat &src)
 //区域识别 //输入彩色原图
 
 
-void MainWindow::posDetect(const char* filename,const Mat &in, vector<RotatedRect> & rects) //寻找号码区域
+void MainWindow::posDetect(const Mat &in, vector<RotatedRect> & rects) //寻找号码区域
 
 {
 
 //	Mat threshold_R;
 //	OstuBeresenThreshold(in, threshold_R); //二值化
-	Mat threshold_R = Ada_Thresgold(filename);
+	Mat threshold_R = Ada_Thresgold(in);
 
 	Mat imgInv(threshold_R.size(), threshold_R.type(), cv::Scalar(255));
 //	Mat threshold_Inv = imgInv - threshold_R; //黑白色反转，即背景为黑色
@@ -338,6 +358,7 @@ void MainWindow::posDetect(const char* filename,const Mat &in, vector<RotatedRec
 		cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
 		out(imgr).copyTo(roi_img); //拷贝矩形区域  
 		imshow("NUMBER", roi_img);
+		imwrite("d:/number_roi.jpg", roi_img);
 	 //  imshow("NUMBER", out);
 	
 
@@ -414,7 +435,7 @@ Mat whiteImg(inputImg.size(), inputImg.type(), cv::Scalar(255));
 	short counter = 1;
 	short num = 0;
 	//bool flag[img_threshold.cols];
-	bool flag[2048];
+	bool flag[65535];
 
 	for (int j = 0; j < img_threshold.cols; ++j)
 	{
@@ -673,4 +694,19 @@ void MainWindow::calcGradientFeat(const Mat &imgSrc, Mat &out)
 	{
 		out.at<float>(i) = feat[i];
 	}
+}
+
+
+//读取图像函数 返回彩色MAT
+Mat MainWindow::srcimg_color(QString &filename)
+{
+	Mat srcimg = imread(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_COLOR);
+	return srcimg;
+
+}
+//读取图片 灰度
+Mat MainWindow::srcimg_gray(QString &filename)
+{
+	Mat srcimg = imread(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_GRAYSCALE);
+	return srcimg;
 }
