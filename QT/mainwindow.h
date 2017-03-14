@@ -52,11 +52,19 @@ private:
 	Mat getRplane(const Mat & in);  //获得图片的R通道
 	Mat Ada_Thresgold(const Mat &src);//自适应二值阈值化
 	void OstuBeresenThreshold(const Mat & in, Mat & out);
+	//
+
+	void find_card_area(const Mat &in, vector<RotatedRect> & rects);
 	void posDetect(const Mat &in, vector<RotatedRect> & rects);
-	bool isEligible(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
+
+	void find_name_area(const Mat &in, vector<RotatedRect> & rects);
+	void find_sex_area(const Mat &in, vector<RotatedRect> & rects);
+
+	//
 	void normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area);
 	void char_segment(const Mat & inputImg, vector <Mat>& dst_mat); //得到16*20的标准字符分割图像
 	void getAnnXML();  //获得神经网络的训练矩阵和标签矩阵，
+	bool is_face_area(const RotatedRect &candidate);
 
 	void calcGradientFeat(const Mat& imgSrc, Mat& out);
 	float sumMatValue(const Mat& image);
@@ -66,6 +74,8 @@ private:
 	void classify(CvANN_MLP& ann, vector<Mat> &char_Mat, vector<int> & char_result);
 
 	void getParityBit(vector<int> & char_result);  //获得校验位
+	//
+	Mat resize_img(Mat &src);
 	/////
 	//显示图片在label
 	Mat srcimg;
@@ -90,11 +100,14 @@ private:
 	//读取图片 灰度
 	Mat srcimg_gray(QString &filename);
 
-
-
-
-
-
+	//判断身份证区域
+	bool is_card_area(const RotatedRect & candidate);
+	//判断号码区域
+	bool is_number_area(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
+	//判断姓名区域
+	bool is_name_area(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
+	//
+	bool is_sex_area(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
 };
 
 #endif // MAINWINDOW_H

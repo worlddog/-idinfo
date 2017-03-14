@@ -10,7 +10,11 @@ int main(int argc, char *argv[])
     MainWindow w;
     Login_Dialog login_dlg;
 	Test_Dialog test_dlg;
-	QTextCodec *codec = QTextCodec::codecForName("UTF-8");//情况1
+	QTextCodec *codec = QTextCodec::codecForName("UTF-8");//情况2
+//	QTextCodec::setCodecForTr(codec);
+	QTextCodec::setCodecForLocale(codec);
+//	QTextCodec::setCodecForCStrings(codec);
+
     if(login_dlg.exec()== QDialog::Accepted )
 {
     w.show();
