@@ -24,6 +24,7 @@
 #include <QtWidgets/QStatusBar>
 #include <QtWidgets/QToolBar>
 #include <QtWidgets/QWidget>
+#include <QtWidgets/Qprogressbar>
 
 QT_BEGIN_NAMESPACE
 
@@ -56,6 +57,7 @@ public:
     QMenu *menu;
     QToolBar *mainToolBar;
     QStatusBar *statusBar;
+	QProgressBar *progressBar;
 
     void setupUi(QMainWindow *MainWindow)
     {
@@ -139,6 +141,11 @@ public:
         statusBar = new QStatusBar(MainWindow);
         statusBar->setObjectName(QStringLiteral("statusBar"));
         MainWindow->setStatusBar(statusBar);
+
+		progressBar = new QProgressBar(MainWindow);
+	
+		
+
 
         menuBar->addAction(menu->menuAction());
         menu->addAction(testaction);

@@ -54,11 +54,6 @@ private:
 	void OstuBeresenThreshold(const Mat & in, Mat & out);
 	//
 
-	void find_card_area(const Mat &in, vector<RotatedRect> & rects);
-	void posDetect(const Mat &in, vector<RotatedRect> & rects);
-
-	void find_name_area(const Mat &in, vector<RotatedRect> & rects);
-	void find_sex_area(const Mat &in, vector<RotatedRect> & rects);
 
 	//
 	void normalPosArea(const Mat &intputImg, RotatedRect &rects_optimal, Mat& output_area);
@@ -100,6 +95,23 @@ private:
 	//读取图片 灰度
 	Mat srcimg_gray(QString &filename);
 
+	void find_area(Mat src_gray);
+	//
+
+	//寻找身份证区域
+	void find_card_area(const Mat &in, vector<RotatedRect> & rects);
+	//寻找身份证号区域 1
+	void posDetect(const Mat &in, vector<RotatedRect> & rects);
+	//寻找身份证号区域 2
+	void find_number_area(const Mat src);
+	//寻找姓名区域
+	void find_name_area(const Mat &in, vector<RotatedRect> & rects);
+	//寻找性别区域
+	void find_sex_area(const Mat &in);
+	//寻找住址区域
+	void find_add_area(const Mat src);
+
+
 	//判断身份证区域
 	bool is_card_area(const RotatedRect & candidate);
 	//判断号码区域
@@ -108,6 +120,8 @@ private:
 	bool is_name_area(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
 	//
 	bool is_sex_area(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
+	//
+	bool is_add_area(const RotatedRect & candidate);
 };
 
 #endif // MAINWINDOW_H

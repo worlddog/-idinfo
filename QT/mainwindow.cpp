@@ -19,6 +19,8 @@
 #include <tesseract/baseapi.h>  
 #include <QLabel>
 #include <QTextCodec>
+#include<qprogressbar>
+
 
 
 
@@ -30,10 +32,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
 	
-	QDir run_dir;
-	
     ui->setupUi(this);
-	ui->statusBar->showMessage(QApplication::applicationDirPath());
+//	ui->statusBar->showMessage(QApplication::applicationDirPath());
+	
+	this->ui->progressBar->setTextVisible(false);
+	this->ui->progressBar->setRange(0, 200); //Ö¸Ê¾·¶Î§
+	this->ui->statusBar->addWidget(this->ui->progressBar);
+	//progressBar->setValue(50); //µ±Ç°Öµ
+
 }
 
 MainWindow::~MainWindow()
@@ -58,12 +64,16 @@ void MainWindow::on_pushButton_clicked()
 		Mat c_src = srcimg_color(imagefile);
 		Mat g_src = srcimg_gray(imagefile);
 
+		this->ui->progressBar->setValue(10);
+
 //	imshow(	"resize",resize_img(c_src)); 
 
 		show_img_label(c_src);//ÏÔÊ¾Í¼Ïñº¯Êı
-		Mat thresgold_out;
-		thresgold_out = Ada_Thresgold(g_src);
-		imshow("2", thresgold_out);
+	//	find_area(g_src);      //ÕÒÂÖÀªº¯Êı ÓÃÓÚ²âÊÔ
+
+	//	Mat thresgold_out;
+		//thresgold_out = Ada_Thresgold(g_src);
+	//	imshow("2", thresgold_out);
 		
 //		findface(c_src);
 
@@ -76,11 +86,16 @@ void MainWindow::on_pushButton_clicked()
 	//	vector <RotatedRect>  rects2;
 		//posDetect( imgRplane, rects2);  //»ñµÃÉí·İÖ¤ºÅÂëÇøÓò
 		
-	//	vector <RotatedRect>  rects;
-	//	find_name_area(imgRplane, rects);
+		vector <RotatedRect>  rects;
+	//	find_name_area(g_src, rects);
+		find_sex_area(g_src);
 
-	//	vector <RotatedRect>  rects3;
-	//	find_sex_area(imgRplane, rects3);
+	//	find_number_area(g_src);
+	//	find_add_area(g_src);
+
+
+	
+	
 		
 
 		//Mat outputMat;
@@ -197,7 +212,7 @@ Mat MainWindow::Ada_Thresgold(const Mat &src)
 {
 	int adaptive_method = CV_ADAPTIVE_THRESH_MEAN_C;
 	int threshold_type = CV_THRESH_BINARY;
-	int block_size = 75;
+	int block_size = 25;
 	double offset = 15;
 	double param1 = 5;
 
@@ -400,9 +415,9 @@ void MainWindow::posDetect(const Mat &in, vector<RotatedRect> & rects) //Ñ°ÕÒÇøÓ
 bool MainWindow::is_number_area(const RotatedRect &candidate) //ÅĞ¶¨Éí·İÖ¤ºÅÂëÇøÓò
 {
 	float error = 0.2;
-	const float aspect = 4.5 / 0.3; //³¤¿í±È  4.5 / 0.3
-	int min = 10 * aspect * 10; //×îĞ¡ÇøÓò 10 * aspect * 10
-	int max = 50 * aspect * 50;  //×î´óÇøÓò 50 * aspect * 50
+	const float aspect = 320 / 35; //³¤¿í±È  4.5 / 0.3
+	int min = 20 * aspect * 20; //×îĞ¡ÇøÓò 10 * aspect * 10
+	int max = 500 * aspect * 500;  //×î´óÇøÓò 50 * aspect * 50
 	float rmin = aspect - aspect*error; //¿¼ÂÇÎó²îºóµÄ×îĞ¡³¤¿í±È
 	float rmax = aspect + aspect*error; //¿¼ÂÇÎó²îºóµÄ×î´ó³¤¿í±È
 
@@ -737,37 +752,84 @@ Mat MainWindow::srcimg_color(QString &filename)
 Mat MainWindow::srcimg_gray(QString &filename)
 {
 	Mat srcimg = imread(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_GRAYSCALE);
-	return srcimg;
+	Mat src_out;
+	cv::resize(srcimg, src_out, Size(856,540));
+	return src_out;
 }
 
 
 //ÕÒĞÕÃûÇøÓò
-void MainWindow::find_name_area(const Mat &in, vector<RotatedRect> & rects)
+void MainWindow::find_name_area(const Mat &src_gray, vector<RotatedRect> & rects)
 {
-
-	Mat threshold_R = Ada_Thresgold(in);
-
-	Mat imgInv(threshold_R.size(), threshold_R.type(), cv::Scalar(255));
+	int thresh = 100;
+	int max_thresh = 255;
+	RNG rng(12345);
 	
-	Mat threshold_Inv;
 
-	bitwise_not(threshold_R, threshold_Inv);
+	//ÊäÈëÎª»Ò¶ÈÍ¼
+	//Ä£ºı½µÔë
+	blur(src_gray, src_gray, Size(2, 2));
+	
+	Mat canny_output;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+
+	/// ÓÃCannyËã×Ó¼ì²â±ßÔµ
+	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+
+
+	/*
+	//ÄÚºËÉèÖÃ
+	¾ØĞÎ: MORPH_RECT
+	½»²æĞÎ: MORPH_CROSS
+	ÍÖÔ²ĞÎ: MORPH_ELLIPSE
+	*/
+	//ÅòÕÍÍ¼Ïñ
+	Mat element = getStructuringElement(MORPH_RECT, Size(65, 20));
+	dilate(canny_output, canny_output, element);
 
 
 
-	Mat element = getStructuringElement(MORPH_RECT, Size(15, 3));  //±ÕĞÎÌ¬Ñ§µÄ½á¹¹ÔªËØ
-	morphologyEx(threshold_Inv, threshold_Inv, CV_MOP_CLOSE, element);
+	/// Ñ°ÕÒÂÖÀª
+	findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	/*
+	/// »æ³öÂÖÀª
+	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (int i = 0; i< contours.size(); i++)
+	{
+		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
+	}
 
-	vector< vector <Point> > contours;
-	findContours(threshold_Inv, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);//Ö»¼ì²âÍâÂÖÀª
-	//¶ÔºòÑ¡µÄÂÖÀª½øĞĞ½øÒ»²½É¸Ñ¡
+
+	/// ¶à±ßĞÎ±Æ½üÂÖÀª + »ñÈ¡¾ØĞÎºÍÔ²ĞÎ±ß½ç¿ò
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+
+
+	for (int i = 0; i < contours.size(); i++)
+	{
+		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+
+	}
+
+
+	for (int i = 0; i< contours.size(); i++)
+	{
+		Scalar color = Scalar(255, 255, 255);
+
+		rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+
+	}
+	imshow("test", drawing);
+	
+	*/
 	vector< vector <Point> > ::iterator itc = contours.begin();
 	vector< vector <Point> > ::iterator itc2 = contours.begin();
 
-
-	drawContours(in, contours, 3, (255, 255, 255), -1, 8);
-	imshow("lunkuo", in);
 	
+
 	while (itc != contours.end())
 	{
 		RotatedRect mr = minAreaRect(Mat(*itc)); //·µ»ØÃ¿¸öÂÖÀªµÄ×îĞ¡ÓĞ½ç¾ØĞÎÇøÓò
@@ -785,67 +847,49 @@ void MainWindow::find_name_area(const Mat &in, vector<RotatedRect> & rects)
 
 
 	//²âÊÔÊÇ·ñÕÒµ½ÁËºÅÂëÇøÓò
-	Mat out, roi_img;
-	in.copyTo(out);
+	Mat out(src_gray.cols, src_gray.rows, CV_8UC3);
+
+Mat ada_src=	Ada_Thresgold(src_gray);
+
+	ada_src.copyTo(out);
 	vector<Rect> numbers;
 	Point2f vertices[4];
 	rects[0].points(vertices);
-	for (int i = 0; i < 4; i++)
-		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//»­ºÚÉ«ÏßÌõ
+		for (int i = 0; i < 4; i++)
 
-
-		int px;
-	int py;
-	int pw;
-
-
+		{		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//»­ºÚÉ«ÏßÌõ
+		}
 	
-	int px =  vertices[1].x-5;
-	 py = vertices[1].y-5;
-	 pw = (vertices[2].x - vertices[0].x)+10;
-	int ph = (vertices[3].y - vertices[2].y)+10;
-	Rect imgr(px, py, pw, ph);
-
-	cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
-	out(imgr).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
-	imshow("NAME", roi_img);
-	imwrite("d:/name_roi.jpg", roi_img);  
-
-	tesseract::TessBaseAPI tess;
-	tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-	tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
-	tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
+		cv::Rect roi_rect(vertices[1],vertices[3]);
+		
+		Mat roi_img;
+		cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
+	
+		out(roi_rect).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
+		imshow("NAME", roi_img);     //
+		imwrite("d:/name_roi.jpg", roi_img);  
+	
+		tesseract::TessBaseAPI tess;
+		tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
+		tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
+		tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
+		
 
 	// Get the text  
 	char* outt = tess.GetUTF8Text();
 	QString aa (outt);
 	ui->name_lineEdit->setText(aa);
-	//ui->lineEdit->setText(aa);
-
-
-	//	Point2f size = (10, 80);
-	//0 ×óÏÂ½Ç 1 ×óÉÏ½Ç 2 ÓÒÉÏ½Ç 3 ÓÒÏÂ½Ç
-	/*
-	int px, y, pw, ph = 0;
-	int px = vertices[1].x-5;
-	int py = vertices[1].y-5;
-	int pw = (vertices[2].x - vertices[0].x)+10;
-	int ph = (vertices[3].y - vertices[2].y)+10;
-	Rect imgr(px, py, pw, ph);
-
-	cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
-	out(imgr).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
-	imshow("NUMBER", roi_img);
-	imwrite("d:/number_roi.jpg", roi_img);  */
-	imshow("NUMBER", out);
+	
+	namedWindow("name", CV_WINDOW_AUTOSIZE);
+	imshow("name", out); 
 }
 
 bool MainWindow::is_name_area(const RotatedRect &candidate) //ÅĞ¶¨Éí·İÖ¤ºÅÂëÇøÓò
 {
-	float error = 0.25;
-	const float aspect = 80 / 25; //³¤¿í±È
-	int min = 20 * aspect * 20; //×îĞ¡ÇøÓò
-	int max = 80 * aspect * 80;  //×î´óÇøÓò
+	float error = 0.15;
+	const float aspect = 185 / 58; //³¤¿í±È
+	int min = 50* aspect * 30; //×îĞ¡ÇøÓò
+	int max = 120* aspect * 60;  //×î´óÇøÓò
 	float rmin = aspect - aspect*error; //¿¼ÂÇÎó²îºóµÄ×îĞ¡³¤¿í±È
 	float rmax = aspect + aspect*error; //¿¼ÂÇÎó²îºóµÄ×î´ó³¤¿í±È
 
@@ -861,31 +905,77 @@ bool MainWindow::is_name_area(const RotatedRect &candidate) //ÅĞ¶¨Éí·İÖ¤ºÅÂëÇøÓò
 }//ÅĞ¶¨Éí·İÖ¤ºÅÂëÇøÓò
 
 //
-void MainWindow::find_sex_area(const Mat &in, vector<RotatedRect> & rects)
+void MainWindow::find_sex_area(const Mat &src_gray)
 {
-	Mat threshold_R = Ada_Thresgold(in);
-
-	Mat imgInv(threshold_R.size(), threshold_R.type(), cv::Scalar(255));
-
-	Mat threshold_Inv;
-
-	bitwise_not(threshold_R, threshold_Inv);
+	int thresh = 100;
+	int max_thresh = 255;
+	RNG rng(12345);
 
 
+	//ÊäÈëÎª»Ò¶ÈÍ¼
+	//Ä£ºı½µÔë
+	blur(src_gray, src_gray, Size(2, 2));
 
-	Mat element = getStructuringElement(MORPH_RECT, Size(15, 3));  //±ÕĞÎÌ¬Ñ§µÄ½á¹¹ÔªËØ
-	morphologyEx(threshold_Inv, threshold_Inv, CV_MOP_CLOSE, element);
+	Mat canny_output;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
 
-	vector< vector <Point> > contours;
-	findContours(threshold_Inv, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);//Ö»¼ì²âÍâÂÖÀª
-	//¶ÔºòÑ¡µÄÂÖÀª½øĞĞ½øÒ»²½É¸Ñ¡
+	/// ÓÃCannyËã×Ó¼ì²â±ßÔµ
+	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+
+
+	/*
+	//ÄÚºËÉèÖÃ
+	¾ØĞÎ: MORPH_RECT
+	½»²æĞÎ: MORPH_CROSS
+	ÍÖÔ²ĞÎ: MORPH_ELLIPSE
+	*/
+	//ÅòÕÍÍ¼Ïñ
+	Mat element = getStructuringElement(MORPH_RECT, Size(145, 25));
+	dilate(canny_output, canny_output, element);
+
+
+
+	/// Ñ°ÕÒÂÖÀª
+	findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	
+	/// »æ³öÂÖÀª
+	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (int i = 0; i< contours.size(); i++)
+	{
+	Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+	drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
+	}
+
+
+	/// ¶à±ßĞÎ±Æ½üÂÖÀª + »ñÈ¡¾ØĞÎºÍÔ²ĞÎ±ß½ç¿ò
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+
+
+	for (int i = 0; i < contours.size(); i++)
+	{
+	approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+	boundRect[i] = boundingRect(Mat(contours_poly[i]));
+
+	}
+
+
+	for (int i = 0; i< contours.size(); i++)
+	{
+	Scalar color = Scalar(255, 255, 255);
+
+	rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+
+	}
+	imshow("test", drawing);
+
+	
 	vector< vector <Point> > ::iterator itc = contours.begin();
 	vector< vector <Point> > ::iterator itc2 = contours.begin();
 
+	vector<RotatedRect>  rects;
 
-	drawContours(in, contours, 11, (255, 255, 255), -1, 8);
-	imshow("lunkuo", in);
-	
 	while (itc != contours.end())
 	{
 		RotatedRect mr = minAreaRect(Mat(*itc)); //·µ»ØÃ¿¸öÂÖÀªµÄ×îĞ¡ÓĞ½ç¾ØĞÎÇøÓò
@@ -903,68 +993,56 @@ void MainWindow::find_sex_area(const Mat &in, vector<RotatedRect> & rects)
 
 
 	//²âÊÔÊÇ·ñÕÒµ½ÁËºÅÂëÇøÓò
-	Mat out, roi_img;
-	in.copyTo(out);
+	Mat out(src_gray.cols, src_gray.rows, CV_8UC3);
+
+	Mat ada_src = Ada_Thresgold(src_gray);
+
+	ada_src.copyTo(out);
 	vector<Rect> numbers;
 	Point2f vertices[4];
 	rects[0].points(vertices);
 	for (int i = 0; i < 4; i++)
-			line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//»­ºÚÉ«ÏßÌõ
 
-	/*
-		int px;
-	int py;
-	int pw;
+	{		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//»­ºÚÉ«ÏßÌõ
+	}
 
+	cv::Rect roi_rect(vertices[1], vertices[3]);
 
+	Mat roi_img;
+	cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
 
-	int px = vertices[1].x - 5;
-	py = vertices[1].y - 5;
-	pw = (vertices[2].x - vertices[0].x) + 10;
-	int ph = (vertices[3].y - vertices[2].y) + 10;
-	Rect imgr(px, py, pw, ph);
-	
-	cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
-	out(imgr).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
-	imshow("NAME", roi_img);
+	out(roi_rect).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
+	imshow("NAME", roi_img);     //
 	imwrite("d:/name_roi.jpg", roi_img);
-	
+
 	tesseract::TessBaseAPI tess;
 	tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-	tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
+	tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
 	tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
+
 
 	// Get the text  
 	char* outt = tess.GetUTF8Text();
-	QString aa(outt);
-	ui->name_lineEdit->setText(aa);
-	//ui->lineEdit->setText(aa);
-
-	*/
 	
-	//0 ×óÏÂ½Ç 1 ×óÉÏ½Ç 2 ÓÒÉÏ½Ç 3 ÓÒÏÂ½Ç
-	/*
-	int px, y, pw, ph = 0;
-	int px = vertices[1].x-5;
-	int py = vertices[1].y-5;
-	int pw = (vertices[2].x - vertices[0].x)+10;
-	int ph = (vertices[3].y - vertices[2].y)+10;
-	Rect imgr(px, py, pw, ph);
+	QString sex(outt);
 
-	cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
-	out(imgr).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
-	imshow("NUMBER", roi_img);
-	imwrite("d:/number_roi.jpg", roi_img);  
-	imshow("NUMBER", out);  */
+	//int i = sex.indexOf("ÄĞ");
+
+//	QString sex_result = sex.mid(i, 1);
+		ui->sex_lineEdit->setText(sex);
 	
+	
+
+	namedWindow("name", CV_WINDOW_AUTOSIZE);
+	imshow("name", out);
 }
 
 bool MainWindow::is_sex_area(const RotatedRect & candidate)
 {
 	float error = 0.2;
-	const float aspect = 1.0 / 1; //³¤¿í±È  4.5 / 0.3
-	int min = 15 * aspect * 15; //×îĞ¡ÇøÓò 10 * aspect * 10
-	int max = 30 * aspect * 30;  //×î´óÇøÓò 50 * aspect * 50
+	const float aspect = 370 / 60; //³¤¿í±È  368/ 57
+	int min = 60 * aspect * 50; //×îĞ¡ÇøÓò 10 * aspect * 10
+	int max = 120 * aspect * 80;  //×î´óÇøÓò 50 * aspect * 50
 	float rmin = aspect - aspect*error; //¿¼ÂÇÎó²îºóµÄ×îĞ¡³¤¿í±È
 	float rmax = aspect + aspect*error; //¿¼ÂÇÎó²îºóµÄ×î´ó³¤¿í±È
 
@@ -1117,3 +1195,323 @@ Mat MainWindow::resize_img(Mat &src)
 
 
 }
+
+void  MainWindow::find_area(Mat src_gray)
+{
+	int thresh = 100;
+	int max_thresh = 255;
+	RNG rng(12345);
+
+	//ÊäÈëÎª»Ò¶ÈÍ¼
+	//Ä£ºı½µÔë
+	blur(src_gray, src_gray, Size(3, 3));
+	
+	Mat canny_output;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	
+	/// ÓÃCannyËã×Ó¼ì²â±ßÔµ
+	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+
+	
+/*
+//ÄÚºËÉèÖÃ
+¾ØĞÎ: MORPH_RECT
+½»²æĞÎ: MORPH_CROSS
+ÍÖÔ²ĞÎ: MORPH_ELLIPSE
+*/
+	//ÅòÕÍÍ¼Ïñ
+	Mat element = getStructuringElement(MORPH_RECT,Size(16, 12));
+	dilate(canny_output, canny_output, element);
+
+
+
+	/// Ñ°ÕÒÂÖÀª
+	findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+
+	
+
+	imshow("", canny_output);
+	/// »æ³öÂÖÀª
+	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (int i = 0; i< contours.size(); i++)
+	{
+		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
+	}
+
+	
+	/// ¶à±ßĞÎ±Æ½üÂÖÀª + »ñÈ¡¾ØĞÎºÍÔ²ĞÎ±ß½ç¿ò
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+
+
+	for (int i = 0; i < contours.size(); i++)
+	{
+		 approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+	
+	}
+
+	
+	for (int i = 0; i< contours.size(); i++)
+	{
+		Scalar color = Scalar(255,255,255);
+
+		rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+
+	}
+
+
+	//É¸Ñ¡ÂÖÀª
+
+
+
+	/// ÔÚ´°ÌåÖĞÏÔÊ¾½á¹û
+	namedWindow("Contours", CV_WINDOW_AUTOSIZE);
+	imshow("Contours", drawing);
+	
+
+}
+
+
+void MainWindow::find_number_area(const Mat src_gray)
+{
+	int thresh = 100;
+	int max_thresh = 255;
+	RNG rng(12345);
+
+	//ÊäÈëÎª»Ò¶ÈÍ¼
+	//Ä£ºı½µÔë
+	blur(src_gray, src_gray, Size(2, 2));
+	//ÅòÕÍÍ¼Ïñ
+	Mat canny_output;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+
+	/// ÓÃCannyËã×Ó¼ì²â±ßÔµ
+	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+
+
+	/*
+	//ÄÚºËÉèÖÃ
+	¾ØĞÎ: MORPH_RECT
+	½»²æĞÎ: MORPH_CROSS
+	ÍÖÔ²ĞÎ: MORPH_ELLIPSE
+	*/
+	Mat element = getStructuringElement(MORPH_RECT, Size(16, 12));
+	dilate(canny_output, canny_output, element);
+
+
+
+	/// Ñ°ÕÒÂÖÀª
+	findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+
+
+	vector< vector <Point> > ::iterator itc = contours.begin();
+	vector< vector <Point> > ::iterator itc2 = contours.begin();
+
+	vector<RotatedRect>  rects;
+
+	while (itc != contours.end())
+	{
+		RotatedRect mr = minAreaRect(Mat(*itc)); //·µ»ØÃ¿¸öÂÖÀªµÄ×îĞ¡ÓĞ½ç¾ØĞÎÇøÓò
+		if (!is_number_area(mr))  //ÅĞ¶Ï¾ØĞÎÂÖÀªÊÇ·ñ·ûºÏÒªÇó
+		{
+			itc = contours.erase(itc);
+
+		}
+		else
+		{
+			rects.push_back(mr);
+			++itc;
+		}
+	}
+
+
+	//²âÊÔÊÇ·ñÕÒµ½ÁËºÅÂëÇøÓò
+	Mat out(src_gray.cols, src_gray.rows, CV_8UC3);
+
+	Mat ada_src = Ada_Thresgold(src_gray);
+
+	ada_src.copyTo(out);
+	vector<Rect> numbers;
+	Point2f vertices[4];
+	rects[0].points(vertices);
+	for (int i = 0; i < 4; i++)
+
+	{		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//»­ºÚÉ«ÏßÌõ
+	}
+
+	cv::Rect roi_rect(vertices[1], vertices[3]);
+
+	Mat roi_img;
+	cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
+
+	out(roi_rect).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
+	imshow("NAME", roi_img);     //
+	imwrite("d:/number_roi.jpg", roi_img);
+
+	tesseract::TessBaseAPI tess;
+	tess.Init(NULL, "eng", tesseract::OEM_DEFAULT);
+	tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
+	tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
+
+
+	// Get the text  
+	char* outt = tess.GetUTF8Text();
+	QString aa(outt);
+	ui->id_lineEdit->setText(aa);
+
+	namedWindow("number", CV_WINDOW_AUTOSIZE);
+	imshow("number", out);
+}
+
+void MainWindow::find_add_area(const Mat src_gray)
+{
+	int thresh = 100;
+	int max_thresh = 255;
+	RNG rng(12345);
+
+	//ÊäÈëÎª»Ò¶ÈÍ¼
+	//Ä£ºı½µÔë
+	blur(src_gray, src_gray, Size(2, 2));
+
+	Mat canny_output;
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+
+	/// ÓÃCannyËã×Ó¼ì²â±ßÔµ
+	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+
+
+	/*
+	//ÄÚºËÉèÖÃ
+	¾ØĞÎ: MORPH_RECT
+	½»²æĞÎ: MORPH_CROSS
+	ÍÖÔ²ĞÎ: MORPH_ELLIPSE
+	*/
+	//ÅòÕÍÍ¼Ïñ
+	Mat element = getStructuringElement(MORPH_RECT, Size(35, 15));
+	dilate(canny_output, canny_output, element);
+
+
+
+	/// Ñ°ÕÒÂÖÀª
+	findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	
+	/// »æ³öÂÖÀª
+	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (int i = 0; i< contours.size(); i++)
+	{
+	Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+	drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
+	}
+
+
+	/// ¶à±ßĞÎ±Æ½üÂÖÀª + »ñÈ¡¾ØĞÎºÍÔ²ĞÎ±ß½ç¿ò
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+
+
+	for (int i = 0; i < contours.size(); i++)
+	{
+	approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+	boundRect[i] = boundingRect(Mat(contours_poly[i]));
+
+	}
+
+
+	for (int i = 0; i< contours.size(); i++)
+	{
+	Scalar color = Scalar(255, 255, 255);
+
+	rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+
+	}
+	imshow("test", drawing);
+	
+
+	vector< vector <Point> > ::iterator itc = contours.begin();
+	vector< vector <Point> > ::iterator itc2 = contours.begin();
+
+
+	vector <RotatedRect>  rects;
+
+	while (itc != contours.end())
+	{
+		RotatedRect mr = minAreaRect(Mat(*itc)); //·µ»ØÃ¿¸öÂÖÀªµÄ×îĞ¡ÓĞ½ç¾ØĞÎÇøÓò
+		if (!is_add_area(mr))  //ÅĞ¶Ï¾ØĞÎÂÖÀªÊÇ·ñ·ûºÏÒªÇó
+		{
+			itc = contours.erase(itc);
+
+		}
+		else
+		{
+			rects.push_back(mr);
+			++itc;
+		}
+	}
+
+
+	//²âÊÔÊÇ·ñÕÒµ½ÁËºÅÂëÇøÓò
+	Mat out(src_gray.cols, src_gray.rows, CV_8UC3);
+
+	Mat ada_src = Ada_Thresgold(src_gray);
+
+	ada_src.copyTo(out);
+	vector<Rect> numbers;
+	Point2f vertices[4];
+	rects[0].points(vertices);
+	for (int i = 0; i < 4; i++)
+
+	{		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//»­ºÚÉ«ÏßÌõ
+	}
+
+	cv::Rect roi_rect(vertices[1], vertices[3]);
+
+	Mat roi_img;
+	cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//»æÖÆ·½¿ò
+
+	out(roi_rect).copyTo(roi_img); //¿½±´¾ØĞÎÇøÓò
+	imshow("NAME", roi_img);     //
+	imwrite("d:/add_roi.jpg", roi_img);
+
+	tesseract::TessBaseAPI tess;
+	tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
+	tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
+	tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
+
+
+	// Get the text  
+	char* outt = tess.GetUTF8Text();
+	QString aa(outt);
+	ui->add_lineEdit->setText(aa);
+
+	namedWindow("name", CV_WINDOW_AUTOSIZE);
+	imshow("name", out);
+	}
+
+
+
+bool MainWindow::is_add_area(const RotatedRect &candidate) //ÅĞ¶¨Éí·İÖ¤ºÅÂëÇøÓò
+{
+	float error = 0.15;
+	const float aspect = 30 / 10; //³¤¿í±È
+	int min = 42 * aspect * 25; //×îĞ¡ÇøÓò
+	int max = 120 * aspect * 120;  //×î´óÇøÓò
+	float rmin = aspect - aspect*error; //¿¼ÂÇÎó²îºóµÄ×îĞ¡³¤¿í±È
+	float rmax = aspect + aspect*error; //¿¼ÂÇÎó²îºóµÄ×î´ó³¤¿í±È
+
+	int area = candidate.size.height * candidate.size.width;
+	float r = (float)candidate.size.width / (float)candidate.size.height;
+	if (r <1)
+		r = 1 / r;
+
+	if ((area < min || area > max) || (r< rmin || r > rmax)) //Âú×ã¸ÃÌõ¼ş²ÅÈÏÎª¸ÃcandidateÎª³µÅÆÇøÓò
+		return false;
+	else
+		return true;
+}//ÅĞ¶¨Éí·İÖ¤ºÅÂëÇøÓò
