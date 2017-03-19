@@ -36,7 +36,7 @@ MainWindow::MainWindow(QWidget *parent) :
 //	ui->statusBar->showMessage(QApplication::applicationDirPath());
 	
 	this->ui->progressBar->setTextVisible(false);
-	this->ui->progressBar->setRange(0, 200); //指示范围
+	this->ui->progressBar->setRange(0, 350); //指示范围
 	this->ui->statusBar->addWidget(this->ui->progressBar);
 	//progressBar->setValue(50); //当前值
 
@@ -62,9 +62,11 @@ void MainWindow::on_pushButton_clicked()
 	if (!imagefile.isNull())
 	{ 
 		Mat c_src = srcimg_color(imagefile);
+		this->ui->progressBar->setValue(25);
 		Mat g_src = srcimg_gray(imagefile);
+		this->ui->progressBar->setValue(50);
 
-		this->ui->progressBar->setValue(10);
+		
 
 //	imshow(	"resize",resize_img(c_src)); 
 
@@ -82,16 +84,15 @@ void MainWindow::on_pushButton_clicked()
 
 	//	Mat imgRplane = getRplane(c_src); //获得原始图像R分量
 	//	vector <RotatedRect>  rects;
-	//		find_card_area(imgRplane, rects);
+	//	find_card_area(g_src);
 	//	vector <RotatedRect>  rects2;
 		//posDetect( imgRplane, rects2);  //获得身份证号码区域
 		
 		vector <RotatedRect>  rects;
-	//	find_name_area(g_src, rects);
-		find_sex_area(g_src);
-
-	//	find_number_area(g_src);
-	//	find_add_area(g_src);
+		find_name_area(g_src);
+	//	find_sex_area(g_src);
+		find_number_area(g_src);
+		find_add_area(g_src);
 
 
 	
@@ -753,13 +754,13 @@ Mat MainWindow::srcimg_gray(QString &filename)
 {
 	Mat srcimg = imread(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_GRAYSCALE);
 	Mat src_out;
-	cv::resize(srcimg, src_out, Size(856,540));
+	cv::resize(srcimg, src_out, Size(856*0.8,540*0.8));
 	return src_out;
 }
 
 
 //找姓名区域
-void MainWindow::find_name_area(const Mat &src_gray, vector<RotatedRect> & rects)
+void MainWindow::find_name_area(const Mat &src_gray)
 {
 	int thresh = 100;
 	int max_thresh = 255;
@@ -771,12 +772,15 @@ void MainWindow::find_name_area(const Mat &src_gray, vector<RotatedRect> & rects
 	blur(src_gray, src_gray, Size(2, 2));
 	
 	Mat canny_output;
+	Mat threshold_output;
+
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 
 	/// 用Canny算子检测边缘
 	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
 
+	threshold(src_gray, threshold_output, thresh, 255, THRESH_BINARY);
 
 	/*
 	//内核设置
@@ -785,14 +789,16 @@ void MainWindow::find_name_area(const Mat &src_gray, vector<RotatedRect> & rects
 	椭圆形: MORPH_ELLIPSE
 	*/
 	//膨胀图像
-	Mat element = getStructuringElement(MORPH_RECT, Size(65, 20));
+	Mat element = getStructuringElement(MORPH_RECT, Size(70, 20));
 	dilate(canny_output, canny_output, element);
+
+	
 
 
 
 	/// 寻找轮廓
 	findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-	/*
+	
 	/// 绘出轮廓
 	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
 	for (int i = 0; i< contours.size(); i++)
@@ -822,12 +828,12 @@ void MainWindow::find_name_area(const Mat &src_gray, vector<RotatedRect> & rects
 		rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
 
 	}
-	imshow("test", drawing);
+	imshow("name_roi", drawing);
 	
-	*/
+	
 	vector< vector <Point> > ::iterator itc = contours.begin();
 	vector< vector <Point> > ::iterator itc2 = contours.begin();
-
+	vector <RotatedRect>  rects;
 	
 
 	while (itc != contours.end())
@@ -886,10 +892,10 @@ Mat ada_src=	Ada_Thresgold(src_gray);
 
 bool MainWindow::is_name_area(const RotatedRect &candidate) //判定身份证号码区域
 {
-	float error = 0.15;
-	const float aspect = 185 / 58; //长宽比
-	int min = 50* aspect * 30; //最小区域
-	int max = 120* aspect * 60;  //最大区域
+	float error = 0.3;
+	const float aspect = 3.9; //长宽比
+	int min = 60* aspect * 40; //最小区域
+	int max = 150* aspect * 60;  //最大区域
 	float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
 	float rmax = aspect + aspect*error; //考虑误差后的最大长宽比
 
@@ -1059,34 +1065,80 @@ bool MainWindow::is_sex_area(const RotatedRect & candidate)
 }
 
 
-void MainWindow::find_card_area(const Mat &in, vector<RotatedRect> & rects) //判断并截取身份证区域
+Mat MainWindow::find_card_area(const Mat &src_gray) //判断并截取身份证区域
 {
-
-	Mat threshold_R = Ada_Thresgold(in); //二值化
-
-	Mat imgInv(threshold_R.size(), threshold_R.type(), cv::Scalar(255)); 
-
-	Mat threshold_Inv;
-
-	bitwise_not(threshold_R, threshold_Inv);
+	int thresh = 100;
+	int max_thresh = 255;
+	Mat card_roi;
+	RNG rng(12345);
 
 
+	//输入为灰度图
+	//模糊降噪
+	blur(src_gray, src_gray, Size(2, 2));
 
-	Mat element = getStructuringElement(MORPH_RECT, Size(15, 3));  //闭形态学的结构元素
-	morphologyEx(threshold_Inv, threshold_Inv, CV_MOP_CLOSE, element);
+	Mat canny_output;
+	Mat threshold_output;
+
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+
+	/// 用Canny算子检测边缘
+	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+
+	threshold(src_gray, threshold_output, thresh, 255, THRESH_BINARY);
+
+	/*
+	//内核设置
+	矩形: MORPH_RECT
+	交叉形: MORPH_CROSS
+	椭圆形: MORPH_ELLIPSE
+	*/
+	//膨胀图像
+	Mat element = getStructuringElement(MORPH_RECT, Size(500, 500));
+	dilate(canny_output, canny_output, element);
+
+	
 
 
-	//膨胀
+
+	/// 寻找轮廓
+	findContours(threshold_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+	
+	/// 绘出轮廓
+	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (int i = 0; i< contours.size(); i++)
+	{
+	Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+	drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
+	}
 
 
+	/// 多边形逼近轮廓 + 获取矩形和圆形边界框
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
 
 
-	vector< vector <Point> > contours;
-	findContours(threshold_Inv, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);//只检测外轮廓
-	//对候选的轮廓进行进一步筛选
+	for (int i = 0; i < contours.size(); i++)
+	{
+	approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+	boundRect[i] = boundingRect(Mat(contours_poly[i]));
+
+	}
+
+
+	for (int i = 0; i< contours.size(); i++)
+	{
+	Scalar color = Scalar(255, 255, 255);
+
+	rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+
+	}
+	imshow("test", drawing);
+
 	vector< vector <Point> > ::iterator itc = contours.begin();
 	vector< vector <Point> > ::iterator itc2 = contours.begin();
-
+	vector <RotatedRect>  rects;
 
 	//drawContours(in, contours, 11, (255, 255, 255), -1, 8);
 	//imshow("lunkuo", in);
@@ -1109,60 +1161,14 @@ void MainWindow::find_card_area(const Mat &in, vector<RotatedRect> & rects) //判
 
 	//测试是否找到了号码区域
 	Mat out, roi_img;
-	in.copyTo(out);
+	src_gray.copyTo(out);
 	vector<Rect> numbers;
 	Point2f vertices[4];
 	rects[0].points(vertices);
 	for (int i = 0; i < 4; i++)
 		line(out, vertices[i], vertices[(i + 1) % 4], Scalar(255, 255, 0));//画黑色线条
 
-	/*
-	int px;
-	int py;
-	int pw;
-
-
-
-	int px = vertices[1].x - 5;
-	py = vertices[1].y - 5;
-	pw = (vertices[2].x - vertices[0].x) + 10;
-	int ph = (vertices[3].y - vertices[2].y) + 10;
-	Rect imgr(px, py, pw, ph);
-
-	cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
-	out(imgr).copyTo(roi_img); //拷贝矩形区域
-	imshow("NAME", roi_img);
-	imwrite("d:/name_roi.jpg", roi_img);
-
-	tesseract::TessBaseAPI tess;
-	tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-	tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
-	tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
-
-	// Get the text
-	char* outt = tess.GetUTF8Text();
-	QString aa(outt);
-	ui->name_lineEdit->setText(aa);
-	//ui->lineEdit->setText(aa);
-
-	*/
-
-	//0 左下角 1 左上角 2 右上角 3 右下角
-	/*
-	int px, y, pw, ph = 0;
-	int px = vertices[1].x-5;
-	int py = vertices[1].y-5;
-	int pw = (vertices[2].x - vertices[0].x)+10;
-	int ph = (vertices[3].y - vertices[2].y)+10;
-	Rect imgr(px, py, pw, ph);
-
-	cv::rectangle(out, imgr, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
-	out(imgr).copyTo(roi_img); //拷贝矩形区域
-	imshow("NUMBER", roi_img);
-	imwrite("d:/number_roi.jpg", roi_img);
-	imshow("NUMBER", out);  */
-
-
+	return card_roi;
 
 }
 bool MainWindow::is_card_area(const RotatedRect & candidate)
@@ -1207,11 +1213,13 @@ void  MainWindow::find_area(Mat src_gray)
 	blur(src_gray, src_gray, Size(3, 3));
 	
 	Mat canny_output;
+	Mat threshold_output;
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	
 	/// 用Canny算子检测边缘
 	Canny(src_gray, canny_output, thresh, thresh * 2, 3);
+	threshold(src_gray, threshold_output, thresh, 255, THRESH_BINARY);
 
 	
 /*
@@ -1300,7 +1308,7 @@ void MainWindow::find_number_area(const Mat src_gray)
 	交叉形: MORPH_CROSS
 	椭圆形: MORPH_ELLIPSE
 	*/
-	Mat element = getStructuringElement(MORPH_RECT, Size(16, 12));
+	Mat element = getStructuringElement(MORPH_RECT, Size(15, 20));
 	dilate(canny_output, canny_output, element);
 
 
@@ -1310,10 +1318,42 @@ void MainWindow::find_number_area(const Mat src_gray)
 
 
 
+	/// 绘出轮廓
+	Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
+	for (int i = 0; i< contours.size(); i++)
+	{
+		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
+	}
+
+
+	/// 多边形逼近轮廓 + 获取矩形和圆形边界框
+	vector<vector<Point> > contours_poly(contours.size());
+	vector<Rect> boundRect(contours.size());
+
+
+	for (int i = 0; i < contours.size(); i++)
+	{
+		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+
+	}
+
+
+	for (int i = 0; i< contours.size(); i++)
+	{
+		Scalar color = Scalar(255, 255, 255);
+
+		rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
+
+	}
+	imshow("number_roi", drawing);
+
 	vector< vector <Point> > ::iterator itc = contours.begin();
 	vector< vector <Point> > ::iterator itc2 = contours.begin();
 
-	vector<RotatedRect>  rects;
+
+	vector <RotatedRect>  rects;
 
 	while (itc != contours.end())
 	{
@@ -1352,7 +1392,7 @@ void MainWindow::find_number_area(const Mat src_gray)
 
 	out(roi_rect).copyTo(roi_img); //拷贝矩形区域
 	imshow("NAME", roi_img);     //
-	imwrite("d:/number_roi.jpg", roi_img);
+	imwrite("d:/add_roi.jpg", roi_img);
 
 	tesseract::TessBaseAPI tess;
 	tess.Init(NULL, "eng", tesseract::OEM_DEFAULT);
@@ -1365,8 +1405,8 @@ void MainWindow::find_number_area(const Mat src_gray)
 	QString aa(outt);
 	ui->id_lineEdit->setText(aa);
 
-	namedWindow("number", CV_WINDOW_AUTOSIZE);
-	imshow("number", out);
+	namedWindow("name", CV_WINDOW_AUTOSIZE);
+	imshow("name", out);
 }
 
 void MainWindow::find_add_area(const Mat src_gray)
@@ -1394,7 +1434,7 @@ void MainWindow::find_add_area(const Mat src_gray)
 	椭圆形: MORPH_ELLIPSE
 	*/
 	//膨胀图像
-	Mat element = getStructuringElement(MORPH_RECT, Size(35, 15));
+	Mat element = getStructuringElement(MORPH_RECT, Size(15, 16));
 	dilate(canny_output, canny_output, element);
 
 
@@ -1431,7 +1471,7 @@ void MainWindow::find_add_area(const Mat src_gray)
 	rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
 
 	}
-	imshow("test", drawing);
+	imshow("add_roi", drawing);
 	
 
 	vector< vector <Point> > ::iterator itc = contours.begin();
@@ -1498,10 +1538,10 @@ void MainWindow::find_add_area(const Mat src_gray)
 
 bool MainWindow::is_add_area(const RotatedRect &candidate) //判定身份证号码区域
 {
-	float error = 0.15;
-	const float aspect = 30 / 10; //长宽比
-	int min = 42 * aspect * 25; //最小区域
-	int max = 120 * aspect * 120;  //最大区域
+	float error = 0.5;
+	const float aspect = 20 / 10; //长宽比
+	int min = 80 * aspect * 80; //最小区域
+	int max = 250 * aspect * 250;  //最大区域
 	float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
 	float rmax = aspect + aspect*error; //考虑误差后的最大长宽比
 

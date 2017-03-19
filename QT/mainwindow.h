@@ -40,11 +40,9 @@ private:
 
 	QImage * qImage; // qt 中的图片类型指针
 	IplImage * image;  // opencv里的图片类型指针
-	IplImage * tempImage;
-	IplImage * image2;
 
-	IplImage *Igray, *Iat;
 
+	
 	IplImage * detect_img;
 	/////////////////////////////////////
 	Mat imgSrc;
@@ -99,13 +97,13 @@ private:
 	//
 
 	//寻找身份证区域
-	void find_card_area(const Mat &in, vector<RotatedRect> & rects);
+	Mat find_card_area(const Mat &src);
 	//寻找身份证号区域 1
 	void posDetect(const Mat &in, vector<RotatedRect> & rects);
 	//寻找身份证号区域 2
 	void find_number_area(const Mat src);
 	//寻找姓名区域
-	void find_name_area(const Mat &in, vector<RotatedRect> & rects);
+	void find_name_area(const Mat &in);
 	//寻找性别区域
 	void find_sex_area(const Mat &in);
 	//寻找住址区域
