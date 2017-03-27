@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <IncludePath>C:\Program Files %28x86%29\MySQL\Connector.C++ 1.1\include;C:\Users\weiyi\Desktop\boost_1_63_0;$(IncludePath)</IncludePath>
+    <_PropertySheetDisplayName>MYSqld</_PropertySheetDisplayName>
+    <LibraryPath>C:\Users\weiyi\Desktop\自己编译Mysql\Debug;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalDependencies>mysqlcppconn.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup />
+</Project>

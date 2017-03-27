@@ -2,13 +2,25 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <cv.h>  
+#include <cv.h>
 #include <highgui.h> 
+#include <QLabel>
+#include <iostream>
+#include"qlabel.h"
+/* MySQL Connector/C++ specific headers （注意：所有头文件都放在/usr/include/cppconn/下面）*/
+#include "mysql_driver.h"
+#include "mysql_connection.h"
+#include "cppconn/driver.h"
+#include "cppconn/statement.h"
+#include "cppconn/prepared_statement.h"
+#include "cppconn/metadata.h"
+#include "cppconn/exception.h"
 
 using namespace cv;
 
 namespace Ui {
 class MainWindow;
+
 }
 
 class MainWindow : public QMainWindow
@@ -19,11 +31,17 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+	QLabel *per1;
+	sql::mysql::MySQL_Driver *driver = 0;
+	sql::Connection *conn = 0;
+
 private slots:
     void on_pushButton_clicked();
+	void on_pushButton2_clicked();
 
 private:
     Ui::MainWindow *ui;
+	QLabel *msgLabel;
 
 	//载入图像
 	
@@ -61,6 +79,9 @@ private:
 	//寻找性别区域
 	void find_sex_area(const Mat &src_gray);
 	bool is_sex_area(const RotatedRect & candidate);
+
+	//数据库写入
+	void write_db();
 	
 };
 

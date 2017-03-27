@@ -285,5 +285,22 @@
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>pushButton_2</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1020</x>
+     <y>510</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>567</x>
+     <y>290</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

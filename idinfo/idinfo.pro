@@ -23,12 +23,52 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 
-SOURCES += main.cpp\
-        mainwindow.cpp \
-    login_dialog.cpp
+INCLUDEPATH += D:\opencv\build\include
+INCLUDEPATH += D:\opencv\build\include\opencv\
+INCLUDEPATH += D:\opencv\build\include\opencv2\
+INCLUDEPATH += C:\tesseract-build\include
+INCLUDEPATH += C:\Users\weiyi\Desktop\SQL\include
+INCLUDEPATH += C:\Users\weiyi\Desktop\boost_1_63_0
 
-HEADERS  += mainwindow.h \
-    login_dialog.h
+LIBS += -LD:\opencv\build\x86\vc12\lib
+-opencv_ml2413d.lib
+-opencv_calib3d2413d.lib
+-opencv_contrib2413d.lib
+-opencv_core2413d.lib
+-opencv_features2d2413d.lib
+-opencv_flann2413d.lib
+-opencv_gpu2413d.lib
+-opencv_highgui2413d.lib
+-opencv_imgproc2413d.lib
+-opencv_legacy2413d.lib
+-opencv_objdetect2413d.lib
+-opencv_ts2413d.lib
+-opencv_video2413d.lib
+-opencv_nonfree2413d.lib
+-opencv_ocl2413d.lib
+-opencv_photo2413d.lib
+-opencv_stitching2413d.lib
+-opencv_superres2413d.lib
+-opencv_videostab2413d.lib
 
-FORMS    += mainwindow.ui \
-    login_dialog.ui
+
+
+HEADERS  += \
+    login_dialog.h \
+    mainwindow.h
+
+
+
+
+FORMS    += \
+    login_dialog.ui \
+    mainwindow.ui
+
+
+DISTFILES +=
+
+
+SOURCES += \
+    login_dialog.cpp \
+    main.cpp \
+    mainwindow.cpp
