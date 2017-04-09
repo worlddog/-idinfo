@@ -93,8 +93,9 @@ void MainWindow::on_pushButton_clicked()
         Mat g_src = srcimg_gray(imagefile);		//载入灰度图像
 
         show_img_label(c_src);//显示图像函数
-
-
+	//	get_name(c_src);
+	//	get_sex(c_src);
+		get_add(c_src);
 		/*for (int i = 100; i < 228; i++)
 			for (int j = 300; j < 428; j++)
 				for (int n = 0; n < c_src.channels(); n++)
@@ -109,10 +110,10 @@ void MainWindow::on_pushButton_clicked()
 		d = 128;
 		delete_roi(c_src, a, b, c, d);*/
 
-     //   find_name_area(g_src);	//识别姓名
+   //     find_name_area(g_src);	//识别姓名
 	//	find_sex_area(g_src);
 	//	find_number_area(g_src);
-        find_add_area(g_src);
+    //    find_add_area(g_src);
 
 
     }
@@ -403,8 +404,8 @@ void MainWindow::on_pushButton2_clicked()
         cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
 
         out(roi_rect).copyTo(roi_img); //拷贝矩形区域
-        imshow("NAME", roi_img);     //
-        imwrite("d:/name_roi.jpg", roi_img);
+    //    imshow("NAME", roi_img);     //
+    //    imwrite("d:/name_roi.jpg", roi_img);
 
 	
 		
@@ -420,8 +421,8 @@ void MainWindow::on_pushButton2_clicked()
         QString aa(outt);
         ui->name_lineEdit->setText(aa);
 
-        namedWindow("name", CV_WINDOW_AUTOSIZE);
-        imshow("name", out);
+   //     namedWindow("name", CV_WINDOW_AUTOSIZE);
+    //    imshow("name", out);
 		
     }
 
@@ -1009,4 +1010,140 @@ void MainWindow::on_pushButton2_clicked()
 			}
 		imshow("sss", src);
 		return src;
+	}
+
+	//
+	Mat MainWindow::cut_name_img(const Mat &src)
+	{
+		Mat roi_img;
+		Mat name_src = src;
+		Mat resize_src;
+		cv::resize(name_src, resize_src, Size(856, 540));
+
+		int x = 150;
+		int y = 40;
+		int w = 200;
+		int h =	65;
+		Rect imgr(x,y,w,h);
+
+		cv::rectangle(resize_src, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
+	//	imshow("defd", name_src);
+		resize_src(imgr).copyTo(roi_img); //拷贝矩形区域
+	/*	cv::resize(name_src, name_src, Size(856*0.5, 540*0.5));*/
+		//imshow("sss",roi_img);
+		return roi_img;
+	}
+
+	void MainWindow::get_name(const Mat &src)
+	{
+		Mat name_roi = cut_name_img(src);
+	//	imshow("sss", name_roi);
+		cvtColor(name_roi, name_roi, CV_RGB2GRAY);
+		//模糊降噪
+		blur(name_roi, name_roi, Size(2, 2));
+		//imshow("defd", name_roi);
+
+		tesseract::TessBaseAPI tess;
+		tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
+		tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
+		tess.SetImage((uchar*)name_roi.data, name_roi.cols, name_roi.rows, 1, name_roi.cols);
+
+		/* Get the text*/
+		char* outt = "";
+		outt = tess.GetUTF8Text();
+
+		QString aa(outt);
+		ui->name_lineEdit->setText(aa);
+	}
+
+
+
+	Mat MainWindow::cut_sex_img(const Mat &src)
+	{
+		Mat roi_img;
+		Mat sex_src = src;
+		Mat resize_src;
+		cv::resize(sex_src, resize_src, Size(856, 540));
+
+		int x = 150;
+		int y = 115;
+		int w = 85;
+		int h = 70;
+		Rect imgr(x, y, w, h);
+
+		cv::rectangle(resize_src, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
+		imshow("defd", resize_src);
+		resize_src(imgr).copyTo(roi_img); //拷贝矩形区域
+		/*	cv::resize(name_src, name_src, Size(856*0.5, 540*0.5));*/
+	//	imshow("sss",roi_img);
+		return roi_img;
+	}
+
+	void MainWindow::get_sex(const Mat &src)
+	{
+		Mat sex_roi = cut_sex_img(src);
+			imshow("sss", sex_roi);
+		cvtColor(sex_roi, sex_roi, CV_RGB2GRAY);
+		//模糊降噪
+		blur(sex_roi, sex_roi, Size(2, 2));
+		//imshow("defd", name_roi);
+
+		tesseract::TessBaseAPI tess;
+		tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
+		tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
+		tess.SetImage((uchar*)sex_roi.data,sex_roi.cols, sex_roi.rows, 1, sex_roi.cols);
+
+		/* Get the text*/
+		char* outt = "";
+		outt = tess.GetUTF8Text();
+
+		QString aa(outt);
+		ui->sex_lineEdit->setText(aa);
+	}
+
+
+	Mat MainWindow::cut_add_img(const Mat &src)
+	{
+		Mat roi_img;
+		Mat add_src = src;
+		Mat resize_src;
+		cv::resize(add_src, resize_src, Size(856, 540));
+
+		int x = 150;
+		int y = 265;
+		int w = 382;
+		int h = 145;
+
+
+		
+		Rect imgr(x, y, w, h);
+
+		cv::rectangle(resize_src, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
+		imshow("defd", resize_src);
+		resize_src(imgr).copyTo(roi_img); //拷贝矩形区域
+		/*	cv::resize(name_src, name_src, Size(856*0.5, 540*0.5));*/
+		//	imshow("sss",roi_img);
+		return roi_img;
+	}
+
+	void MainWindow::get_add(const Mat &src)
+	{
+		Mat add_roi = cut_add_img(src);
+		imshow("sss", add_roi);
+		cvtColor(add_roi, add_roi, CV_RGB2GRAY);
+		//模糊降噪
+		blur(add_roi, add_roi, Size(2, 2));
+		//imshow("defd", name_roi);
+
+		//tesseract::TessBaseAPI tess;
+		//tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
+		//tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
+		//tess.SetImage((uchar*)add_roi.data, add_roi.cols, add_roi.rows, 1, add_roi.cols);
+
+		///* Get the text*/
+		//char* outt = "";
+		//outt = tess.GetUTF8Text();
+
+		//QString aa(outt);
+		//ui->add_textEdit->setText(aa);
 	}

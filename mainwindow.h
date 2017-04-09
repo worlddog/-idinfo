@@ -88,6 +88,19 @@ private:
 	void find_sex_area(const Mat &src_gray);
 	bool is_sex_area(const RotatedRect & candidate);
 
+	//
+
+
+	//裁剪各区域
+	Mat cut_name_img(const Mat &src);
+	Mat cut_sex_img(const Mat &src);
+	Mat cut_add_img(const Mat &src);
+	//Mat cut_sex_img(const Mat &src);
+	//
+	void get_name(const Mat &src);
+	void get_sex(const Mat &src);
+	void get_add(const Mat &src);
+
 	//数据库写入
 	void write_db();
 	
