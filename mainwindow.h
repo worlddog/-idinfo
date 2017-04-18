@@ -72,7 +72,11 @@ private:
 	Mat detectAndDraw_face(Mat& img, CascadeClassifier& faceCascade, double scale);
 	void findface(Mat &src);
 
-
+	//寻找身份证
+	void find_card_area(const Mat &in);
+	bool is_card_area(const RotatedRect & candidate);
+	
+	//寻找姓名
 	void find_name_area(const Mat &in);
 	bool is_name_area(const RotatedRect & candidate);//判断身份证号码区域是否符合预设大小
 
@@ -95,14 +99,19 @@ private:
 	Mat cut_name_img(const Mat &src);
 	Mat cut_sex_img(const Mat &src);
 	Mat cut_add_img(const Mat &src);
+	Mat cut_nation_img(const Mat &src);
 	//Mat cut_sex_img(const Mat &src);
 	//
 	void get_name(const Mat &src);
 	void get_sex(const Mat &src);
 	void get_add(const Mat &src);
+	void get_nation(const Mat &src);
 
 	//数据库写入
 	void write_db();
+
+	//tess test
+	void tess_test(const Mat& src);
 	
 };
 

@@ -8,27 +8,28 @@
 #include "ui_mainwindow.h"
 #include <cv.h>
 #include <highgui.h>
-#include<qfiledialog.h>
+
+
 #include<qmessagebox.h>
 #include <QTextCodec>
-
 #include <QFileDialog>
 #include"qt_windows.h"
+#include<qdebug.h>
+#include <QLabel>
+
+
 #include "opencv2/objdetect/objdetect.hpp"  
 #include "opencv2/imgproc/imgproc.hpp"  
 #include <cctype>  
 #include <iostream>  
 #include <iterator>  
 #include <stdio.h>  
-#include<qdebug.h>
-#include <QLabel>
-#include<qprogressbar>
+
 #include <fstream>
 
 #include <baseapi.h>  
 #include <iostream>  
 
-//#include <allheaders.h>
 
 /* MySQL Connector/C++ specific headers */
 #include "mysql_driver.h"
@@ -52,18 +53,30 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
 	connect(ui->pushButton_2, SIGNAL(clicked()), this, SLOT(on_pushButton2_clicked()));
+	//格式限制
+	//id
+	QRegExp id_regx("[a-zA-Z0-9]+$");
+	QValidator *validator = new QRegExpValidator(id_regx, ui->number_lineEdit);
+	ui->number_lineEdit->setValidator(validator);
+
+	// BIR
+	QRegExp bir_regx("[\\x4e00-\\x9fa5]+");
+	QValidator *bir_validator = new QRegExpValidator(bir_regx, ui->date_lineEdit);
+	ui->date_lineEdit->setValidator(bir_validator);
+	//NATION
+	QRegExp nation_regx("[a-zA-Z0-9]+$");
+	QValidator *nation_validator = new QRegExpValidator(nation_regx, ui->mz_lineEdit);
+	ui->mz_lineEdit->setValidator(nation_validator);
+
 
     msgLabel = new QLabel;
     msgLabel->setMinimumSize(msgLabel->sizeHint());
     msgLabel->setAlignment(Qt::AlignHCenter);
-//	msgLabel->setText(tr("test"));
     statusBar()->addWidget(msgLabel);
-//	statusBar()->showMessage("11111111", 3000);//3s后关闭
     QLabel *per1 = new QLabel("就绪", this);
     statusBar()->addPermanentWidget(per1);
     statusBar()->setSizeGripEnabled(false); //设置是否显示右边的大小控制点
 
-	
 	try
 	{
 		driver = sql::mysql::get_mysql_driver_instance();
@@ -89,36 +102,14 @@ void MainWindow::on_pushButton_clicked()
     if (!imagefile.isNull())
     {
         Mat c_src = srcimg_color(imagefile);	//载入彩色图像
-
         Mat g_src = srcimg_gray(imagefile);		//载入灰度图像
-
         show_img_label(c_src);//显示图像函数
-	//	get_name(c_src);
-	//	get_sex(c_src);
+		get_name(c_src);
 		get_add(c_src);
-		/*for (int i = 100; i < 228; i++)
-			for (int j = 300; j < 428; j++)
-				for (int n = 0; n < c_src.channels(); n++)
-					c_src.at<uchar>(i, j*c_src.channels() + n) = 255;
-		imshow("ggggg", c_src);*/
-
-     //   findface(c_src);
-	/*	int a, b, c, d;
-			a = 400;
-			b = 100;
-			c = 128;
-		d = 128;
-		delete_roi(c_src, a, b, c, d);*/
-
-   //     find_name_area(g_src);	//识别姓名
-	//	find_sex_area(g_src);
-	//	find_number_area(g_src);
-    //    find_add_area(g_src);
-
-
+		get_nation(c_src);
+        findface(c_src);
+		find_number_area(g_src);
     }
-	
-
 }
 
 void MainWindow::on_pushButton2_clicked()
@@ -131,6 +122,7 @@ void MainWindow::on_pushButton2_clicked()
     Mat MainWindow::srcimg_color(QString &filename)
     {
         Mat srcimg = imread(filename.toLocal8Bit().data(), CV_LOAD_IMAGE_COLOR);
+		cv::resize(srcimg, srcimg, Size(856, 540));
         return srcimg;
     }
 
@@ -208,28 +200,20 @@ void MainWindow::on_pushButton2_clicked()
 		{
 			for (vector<Rect>::const_iterator r = faces.begin(); r != faces.end(); r++, i++)
 			{
-				//	cv::rectangle(img, *r, Scalar(0, 255, 0), 1, 8, 0);//在img上绘制出检测到的面部矩形框，绿色框
+			
 
 
 				//控制矩形框位置
 				int RectPosition_x = faces[0].x;
 				int RectPosition_y = faces[0].y;
-				int RectPosition_w = faces[0].width;
-				int RectPosition_h = faces[0].height;
-				Rect imgr(RectPosition_x - 10, RectPosition_y - 10, RectPosition_w + 20, RectPosition_h + 20);
-
+	// 358*441
+				Rect imgr(RectPosition_x - 40, RectPosition_y - 60,358*0.71, 441*0.71);
 				cv::rectangle(img, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
 				//控制矩形框位置
-				//	Rect rect(a.x,a.y,50, 50); // (左上x, 左上y, 宽度, 高度)
-				img(imgr).copyTo(roi_img); //拷贝矩形区域
-				//	imshow("cut", roi_img);
-				
+				img(imgr).copyTo(roi_img); //拷贝矩形区域				
 			}
 
-			cv::imshow("result", img);//将img显示到result窗口
-
-			//	cv::imshow("cut", roi_img);//显示img
-		//	imwrite("d:/face_roi.jpg", roi_img);
+			imwrite("d:/face_roi.jpg", roi_img);
 			show_img_label2(roi_img);
 
 			return roi_img;
@@ -248,16 +232,12 @@ void MainWindow::on_pushButton2_clicked()
         if (!faceCascade.load(cascadeName))//载入xml训练数据
         {
             QMessageBox::information(NULL, "警告", "载入XML失败", QMessageBox::Yes);
-			
         }
        
-        cvNamedWindow("result", 1);//创建窗口，命名result，id为1
         if (!src.empty())
         {
 			face_public = detectAndDraw_face(src, faceCascade, scale);//进行识别
-			
 		}
-
     }
 
     //显示图像在头像框
@@ -271,7 +251,6 @@ void MainWindow::on_pushButton2_clicked()
         {
             cv::cvtColor(src, rgb, CV_BGR2RGB);
             img = QImage((const uchar*)(rgb.data), rgb.cols, rgb.rows, rgb.cols*rgb.channels(), QImage::Format_RGB888);
-
         }
         else
         {
@@ -282,486 +261,14 @@ void MainWindow::on_pushButton2_clicked()
 	
         ui->label_2->resize(ui->label_2->pixmap()->size());
         ui->label_2->show();
-
-
     }
 
-    //姓名
-    void MainWindow::find_name_area(const Mat &src_gray)
-    {
-        int thresh = 100;
-    //	int max_thresh = 255;
-        RNG rng(12345);
-
-
-        //输入为灰度图
-        //模糊降噪
-        blur(src_gray, src_gray, Size(2, 2));
-
-        Mat canny_output;
-        Mat threshold_output;
-
-        vector<vector<Point> > contours;
-        vector<Vec4i> hierarchy;
-
-        /// 用Canny算子检测边缘
-        Canny(src_gray, canny_output, thresh, thresh * 2, 3);
-
-        threshold(src_gray, threshold_output, thresh, 255, THRESH_BINARY);
-
-        /*
-        //内核设置
-        矩形: MORPH_RECT
-        交叉形: MORPH_CROSS
-        椭圆形: MORPH_ELLIPSE
-        */
-        //膨胀图像
-        Mat element = getStructuringElement(MORPH_RECT, Size(70, 20));
-        dilate(canny_output, canny_output, element);
-
-
-
-
-
-        /// 寻找轮廓
-        findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-        /// 绘出轮廓
-        Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
-        for (int i = 0; i< contours.size(); i++)
-        {
-            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-            drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
-        }
-
-
-        /// 多边形逼近轮廓 + 获取矩形和圆形边界框
-        vector<vector<Point> > contours_poly(contours.size());
-        vector<Rect> boundRect(contours.size());
-
-
-        for (int i = 0; i < contours.size(); i++)
-        {
-            approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
-            boundRect[i] = boundingRect(Mat(contours_poly[i]));
-
-        }
-
-
-        for (int i = 0; i< contours.size(); i++)
-        {
-            Scalar color = Scalar(255, 255, 255);
-
-            rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
-
-        }
-        imshow("name_roi", drawing);
-
-
-        vector< vector <Point> > ::iterator itc = contours.begin();
-        vector< vector <Point> > ::iterator itc2 = contours.begin();
-        vector <RotatedRect>  rects;
-		
-
-        while (itc != contours.end())
-        {
-            RotatedRect mr = minAreaRect(Mat(*itc)); //返回每个轮廓的最小有界矩形区域
-            if (!is_name_area(mr))  //判断矩形轮廓是否符合要求
-            {
-                itc = contours.erase(itc);
-
-            }
-            else
-            {
-                rects.push_back(mr);
-                ++itc;
-            }
-        }
-	
-		if (contours.empty() == true)
-		{
-			QMessageBox::information(NULL, "警告", "找不到姓名区域", QMessageBox::Yes);
-			return;
-		}
-
-        //测试是否找到了号码区域
-        Mat out(src_gray.cols, src_gray.rows, CV_8UC3);
-
-        Mat ada_src = Ada_Thresgold(src_gray);
-
-        ada_src.copyTo(out);
-        vector<Rect> numbers;
-        Point2f vertices[4];
-        rects[0].points(vertices);
-        for (int i = 0; i < 4; i++)
-
-        {		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//画黑色线条
-        }
-
-        cv::Rect roi_rect(vertices[1], vertices[3]);
-
-        Mat roi_img;
-        cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
-
-        out(roi_rect).copyTo(roi_img); //拷贝矩形区域
-    //    imshow("NAME", roi_img);     //
-    //    imwrite("d:/name_roi.jpg", roi_img);
-
-	
-		
-        tesseract::TessBaseAPI tess;
-        tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-        tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
-        tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
-
-        // Get the text
-        char* outt = "";
-        outt = tess.GetUTF8Text();
-		
-        QString aa(outt);
-        ui->name_lineEdit->setText(aa);
-
-   //     namedWindow("name", CV_WINDOW_AUTOSIZE);
-    //    imshow("name", out);
-		
-    }
-
-    bool MainWindow::is_name_area(const RotatedRect &candidate) //判定身份证号码区域
-    {
-        float error = 0.3;
-        const float aspect = 3.9; //长宽比
-        int min = 60 * aspect * 40; //最小区域
-        int max = 150 * aspect * 60;  //最大区域
-        float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
-        float rmax = aspect + aspect*error; //考虑误差后的最大长宽比
-
-        int area = candidate.size.height * candidate.size.width;
-        float r = (float)candidate.size.width / (float)candidate.size.height;
-        if (r <1)
-            r = 1 / r;
-
-        if ((area < min || area > max) || (r< rmin || r > rmax)) //满足该条件才认为该candidate为车牌区域
-            return false;
-        else
-            return true;
-    }//判定身份证号码区域
     //
-
-    //地址
-    void MainWindow::find_add_area(const Mat &src_gray)
-    {
-        int thresh = 100;
-        int max_thresh = 255;
-        RNG rng(12345);
-
-        //输入为灰度图
-        //模糊降噪
-        blur(src_gray, src_gray, Size(2, 2));
-
-        Mat canny_output;
-        vector<vector<Point> > contours;
-        vector<Vec4i> hierarchy;
-
-        /// 用Canny算子检测边缘
-        Canny(src_gray, canny_output, thresh, thresh * 2, 3);
-
-
-        /*
-        //内核设置
-        矩形: MORPH_RECT
-        交叉形: MORPH_CROSS
-        椭圆形: MORPH_ELLIPSE
-        */
-        //膨胀图像
-        Mat element = getStructuringElement(MORPH_RECT, Size(15, 16));
-        dilate(canny_output, canny_output, element);
-
-        /// 寻找轮廓
-        findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-        /// 绘出轮廓
-        Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
-        for (int i = 0; i< contours.size(); i++)
-        {
-            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-            drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
-        }
-
-        /// 多边形逼近轮廓 + 获取矩形和圆形边界框
-        vector<vector<Point> > contours_poly(contours.size());
-        vector<Rect> boundRect(contours.size());
-
-
-        for (int i = 0; i < contours.size(); i++)
-        {
-            approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
-            boundRect[i] = boundingRect(Mat(contours_poly[i]));
-
-        }
-
-
-        for (int i = 0; i< contours.size(); i++)
-        {
-            Scalar color = Scalar(255, 255, 255);
-
-            rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
-
-        }
-        imshow("add_roi", drawing);
-
-
-        vector< vector <Point> > ::iterator itc = contours.begin();
-        vector< vector <Point> > ::iterator itc2 = contours.begin();
-
-
-        vector <RotatedRect>  rects;
-
-        while (itc != contours.end())
-        {
-            RotatedRect mr = minAreaRect(Mat(*itc)); //返回每个轮廓的最小有界矩形区域
-            if (!is_add_area(mr))  //判断矩形轮廓是否符合要求
-            {
-                itc = contours.erase(itc);
-
-            }
-            else
-            {
-                rects.push_back(mr);
-                ++itc;
-            }
-        }
-		if (contours.empty() == true)
-		{
-			QMessageBox::information(NULL, "警告", "找不到地址区域", QMessageBox::Yes);
-			return;
-		}
-
-        //测试是否找到了add区域
-        Mat out(src_gray.cols, src_gray.rows, CV_8UC3);
-
-        Mat ada_src = Ada_Thresgold(src_gray);
-
-        ada_src.copyTo(out);
-        vector<Rect> numbers;
-        Point2f vertices[4];
-        rects[0].points(vertices);
-        for (int i = 0; i < 4; i++)
-
-        {		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//画黑色线条
-        }
-
-        cv::Rect roi_rect(vertices[1], vertices[3]);
-
-        Mat roi_img;
-        cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
-
-        out(roi_rect).copyTo(roi_img); //拷贝矩形区域
-       imshow("add", roi_img);     //
-    //    imwrite("d:/add_roi.jpg", roi_img);
-
-        tesseract::TessBaseAPI tess;
-        tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-        tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
-        tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
-
-
-        // Get the text
-        char* outt = tess.GetUTF8Text();
-        QString aa(outt);
-        ui->add_textEdit->setText(aa);
-
-      //  namedWindow("add", CV_WINDOW_AUTOSIZE);
-      //  imshow("add", out);
-    }
-
-    bool MainWindow::is_add_area(const RotatedRect &candidate) //判定地址区域
-    {
-        float error = 0.4;
-        const float aspect = 3.1 / 1; //长宽比
-        int min = 80 * aspect * 80; //最小区域
-        int max = 200 * aspect * 200;  //最大区域
-        float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
-        float rmax = aspect + aspect*error; //考虑误差后的最大长宽比
-
-        int area = candidate.size.height * candidate.size.width;
-        float r = (float)candidate.size.width / (float)candidate.size.height;
-        if (r <1)
-            r = 1 / r;
-
-        if ((area < min || area > max) || (r< rmin || r > rmax)) //满足该条件才认为该candidate为车牌区域
-            return false;
-        else
-            return true;
-    }//判定身份证号码区域
-    //
-
-
-    //性别
-
-    void MainWindow::find_sex_area(const Mat &src_gray)
-    {
-        int thresh = 100;
-        int max_thresh = 255;
-        RNG rng(12345);
-
-
-        //输入为灰度图
-        //模糊降噪
-        blur(src_gray, src_gray, Size(2, 2));
-
-        Mat canny_output;
-        vector<vector<Point> > contours;
-        vector<Vec4i> hierarchy;
-
-        /// 用Canny算子检测边缘
-        Canny(src_gray, canny_output, thresh, thresh * 2, 3);
-
-
-        /*
-        //内核设置
-        矩形: MORPH_RECT
-        交叉形: MORPH_CROSS
-        椭圆形: MORPH_ELLIPSE
-        */
-        //膨胀图像
-        Mat element = getStructuringElement(MORPH_RECT, Size(145, 25));
-        dilate(canny_output, canny_output, element);
-
-
-
-        /// 寻找轮廓
-        findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-        /// 绘出轮廓
-        Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
-        for (int i = 0; i< contours.size(); i++)
-        {
-            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-            drawContours(drawing, contours, i, color, 2, 8, hierarchy, 0, Point());
-        }
-
-
-        /// 多边形逼近轮廓 + 获取矩形和圆形边界框
-        vector<vector<Point> > contours_poly(contours.size());
-        vector<Rect> boundRect(contours.size());
-
-
-        for (int i = 0; i < contours.size(); i++)
-        {
-            approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
-            boundRect[i] = boundingRect(Mat(contours_poly[i]));
-
-        }
-
-
-        for (int i = 0; i< contours.size(); i++)
-        {
-            Scalar color = Scalar(255, 255, 255);
-
-            rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
-
-        }
-        imshow("test", drawing);
-
-
-        vector< vector <Point> > ::iterator itc = contours.begin();
-        vector< vector <Point> > ::iterator itc2 = contours.begin();
-
-        vector<RotatedRect>  rects;
-
-        while (itc != contours.end())
-        {
-            RotatedRect mr = minAreaRect(Mat(*itc)); //返回每个轮廓的最小有界矩形区域
-            if (!is_sex_area(mr))  //判断矩形轮廓是否符合要求
-            {
-                itc = contours.erase(itc);
-
-            }
-            else
-            {
-                rects.push_back(mr);
-                ++itc;
-            }
-        }
-
-		if (contours.empty() == true)
-		{
-			QMessageBox::information(NULL, "警告", "找不到性别和民族区域", QMessageBox::Yes);
-			return;
-		}
-
-        //测试是否找到了SEX区域
-        Mat out(src_gray.cols, src_gray.rows, CV_8UC3);
-
-        Mat ada_src = Ada_Thresgold(src_gray);
-
-        ada_src.copyTo(out);
-        vector<Rect> numbers;
-        Point2f vertices[4];
-        rects[0].points(vertices);
-        for (int i = 0; i < 4; i++)
-
-        {		//	line(out, vertices[i], vertices[(i + 1) % 4], Scalar(0, 255, 0));//画黑色线条
-        }
-
-        cv::Rect roi_rect(vertices[1], vertices[3]);
-
-        Mat roi_img;
-        cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
-
-        out(roi_rect).copyTo(roi_img); //拷贝矩形区域
-     //   imshow("sex", roi_img);     //
-        imwrite("d:/sex_roi.jpg", roi_img);
-
-        tesseract::TessBaseAPI tess;
-        tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-        tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
-        tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
-
-
-        // Get the text
-        char* outt = tess.GetUTF8Text();
-
-        QString sex(outt);
-
-        //int i = sex.indexOf("男");
-
-        //	QString sex_result = sex.mid(i, 1);
-    //	ui->sex_lineEdit->setText(sex);
-
-
-
-      //  namedWindow("name", CV_WINDOW_AUTOSIZE);
-      //  imshow("name", out);
-    }
-
-    bool MainWindow::is_sex_area(const RotatedRect & candidate)
-    {
-        float error = 0.2;
-        const float aspect = 370 / 60; //长宽比  368/ 57
-        int min = 60 * aspect * 50; //最小区域 10 * aspect * 10
-        int max = 120 * aspect * 80;  //最大区域 50 * aspect * 50
-        float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
-        float rmax = aspect + aspect*error; //考虑误差后的最大长宽比
-
-        int area = candidate.size.height * candidate.size.width;
-        float r = (float)candidate.size.width / (float)candidate.size.height;
-        if (r <1)
-            r = 1 / r;
-
-        if ((area < min || area > max) || (r< rmin || r > rmax)) //满足该条件才认为该candidate为车牌区域
-            return false;
-        else
-            return true;
-
-    }
-    //
-
     //号码
     void MainWindow::find_number_area(const Mat src_gray)
     {
         int thresh = 100;
-        int max_thresh = 255;
+       
         RNG rng(12345);
 
         //输入为灰度图
@@ -784,12 +291,8 @@ void MainWindow::on_pushButton2_clicked()
         Mat element = getStructuringElement(MORPH_RECT, Size(15, 20));
         dilate(canny_output, canny_output, element);
 
-
-
         /// 寻找轮廓
         findContours(canny_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-
-
 
         /// 绘出轮廓
         Mat drawing = Mat::zeros(canny_output.size(), CV_8UC3);
@@ -809,7 +312,6 @@ void MainWindow::on_pushButton2_clicked()
         {
             approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
             boundRect[i] = boundingRect(Mat(contours_poly[i]));
-
         }
 
 
@@ -820,12 +322,9 @@ void MainWindow::on_pushButton2_clicked()
             rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0);
 
         }
-        imshow("number_roi", drawing);
-
+ 
         vector< vector <Point> > ::iterator itc = contours.begin();
         vector< vector <Point> > ::iterator itc2 = contours.begin();
-
-
         vector <RotatedRect>  rects;
 
         while (itc != contours.end())
@@ -834,7 +333,6 @@ void MainWindow::on_pushButton2_clicked()
             if (!is_number_area(mr))  //判断矩形轮廓是否符合要求
             {
                 itc = contours.erase(itc);
-
             }
             else
             {
@@ -870,29 +368,93 @@ void MainWindow::on_pushButton2_clicked()
         cv::rectangle(out, roi_rect, Scalar(255, 255, 0), 1, 8, 0);//绘制方框
 
         out(roi_rect).copyTo(roi_img); //拷贝矩形区域
-//        imshow("HUMBER_ROI", roi_img);     
- //       imwrite("d:/number_roi.jpg", roi_img);
 
         tesseract::TessBaseAPI tess;
-        tess.Init(NULL, "eng", tesseract::OEM_DEFAULT);
+        tess.Init(NULL, "num+eng", tesseract::OEM_DEFAULT);
         tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
         tess.SetImage((uchar*)roi_img.data, roi_img.cols, roi_img.rows, 1, roi_img.cols);
 
 
         // Get the text
-        char* outt = tess.GetUTF8Text();
-        QString aa(outt);
-        ui->number_lineEdit->setText(aa);
+        char* number_out = tess.GetUTF8Text();
+		char dob[9]="";
+		dob[8] = 0;
+		strncpy(dob, number_out + 6, 8);
+		char sexbit[1] = "";
+		sexbit[1] = 0;
+		strncpy(sexbit, number_out + 16, 1);
+		QString id_number(number_out);
+		QString birth(dob);
+		id_number = id_number.simplified();
+		ui->number_lineEdit->setText(id_number);
+		ui->date_lineEdit->setText(birth);
+	
+		switch (*sexbit)
+		{
+		case  '0':
+		{
+			ui->sex_lineEdit->setText("女");
+			break;
+		}
+		case  '1':
+		{
+			ui->sex_lineEdit->setText("男");
+			break;
+		}
+		case  '2':
+		{
+			ui->sex_lineEdit->setText("女");
+			break;
+		}
+		case  '3':
+		{
+			ui->sex_lineEdit->setText("男");
+			break;
+		}
+		case '4':
+		{
+			ui->sex_lineEdit->setText("女");
+			break;
+		}
+		case '5':
+		{
+			ui->sex_lineEdit->setText("男");
+			break;
+		}
+		case '6':
+		{
+			ui->sex_lineEdit->setText("女");
+			break;
+		}
+		case '7':
+		{
+			ui->sex_lineEdit->setText("男");
+			break;
+		}
+		case '8':
+		{
+			ui->sex_lineEdit->setText("女");
+			break;
+		}
+		case '9':
+		{
+			ui->sex_lineEdit->setText("男");
+			break;
+		}
 		
-
-      //  namedWindow("number", CV_WINDOW_AUTOSIZE);
-      //  imshow("number", out);
+		default:
+		{
+			ui->sex_lineEdit->setText("ERROR");
+			break; }
+		}
+		
+		
     }
 
     bool MainWindow::is_number_area(const RotatedRect &candidate) //判定身份证号码区域
     {
         float error = 0.2;
-        const float aspect = 320 / 35; //长宽比  4.5 / 0.3
+        const double aspect = 320 / 35; //长宽比  4.5 / 0.3
         int min = 20 * aspect * 20; //最小区域 10 * aspect * 10
         int max = 500 * aspect * 500;  //最大区域 50 * aspect * 50
         float rmin = aspect - aspect*error; //考虑误差后的最小长宽比
@@ -903,12 +465,12 @@ void MainWindow::on_pushButton2_clicked()
         if (r <1)
             r = 1 / r;
 
-        if ((area < min || area > max) || (r< rmin || r > rmax)) //满足该条件才认为该candidate为车牌区域
+        if ((area < min || area > max) || (r< rmin || r > rmax)) //满足该条件
             return false;
         else
             return true;
     }//判定身份证号码区域
-    //
+    
 
 	std::string MainWindow::remove_all_bed(string &src)
 	{
@@ -919,9 +481,7 @@ void MainWindow::on_pushButton2_clicked()
 		while (begin != -1)  //表示字符串中存在空格
 
 		{
-
 			src.replace(begin, 1, "");  // 用空串替换str中从begin开始的1个字符
-
 			begin = src.find("\n", begin);  //查找空格在替换后的str中第一次出现的位置
 
 		}
@@ -949,70 +509,38 @@ void MainWindow::on_pushButton2_clicked()
 
 		std::string name = ui->name_lineEdit->text().toStdString();
 	
-		std::string aaa = "fdef";
+		std::string dob = ui->date_lineEdit->text().toStdString();
 
-		
+		std::string add = ui->add_textEdit->toPlainText().toStdString();
+
+		std::string sex = ui->sex_lineEdit->text().toStdString();
+
+		std::string nation = ui->mz_lineEdit->text().toStdString();
 
 		std::string face_filename = "./face/" + id + ".jpg";
 		imwrite(face_filename, face_public);
 
-		/*ifstream face_img;
-		int length;
-		face_img.open("d:\\face_roi.jpg");
-		face_img.seekg(0, std::ios::end);
-		length = face_img.tellg();
-		face_img.seekg(0, std::ios::beg);
-
-		const int max_length = 1024 * 1024;
-	
-		char* buffer = new char[length];
-	
-		face_img.read(buffer, length);
-		face_img.close();*/
-
-		
 
 		if (id!="")
 		{
 				sql::Statement* stat = conn->createStatement();
-				stat->execute("set names 'gbk'");
-				
-			
+				stat->execute("set names 'utf8'");
 				
 				int updateCount = 0;
-
-			//	bool retstatus = stat->execute("INSERT INTO idinfo(id,name,sex,nation,dob,address,img) VALUES ('"+id+"','asdfg', 'Bill1','sss','fdewf','sder','"+face_filename+"')");
-				bool retstatus = stat->execute("INSERT INTO idinfo(id,name,sex,nation,dob,address,img) VALUES ('" + id + "','asdfg', 'Bill1','sss','fdewf','sder','" + face_filename + "')");
+				bool retstatus = stat->execute("INSERT INTO idinfo(id,name,sex,nation,dob,address,img) VALUES ('" + id + "','" + name + "', '"+ sex +"','"+ nation +"','"+ dob +"','"+ add +"','" + face_filename + "')");
 				if (!retstatus) {
 						updateCount = stat->getUpdateCount();
+						QMessageBox::information(NULL, "成功", "写入成功", QMessageBox::Yes);
 								}
 		}
 
 		else
 		{
 			QMessageBox::information(NULL, "警告", "身份证号为空", QMessageBox::Yes);
-		}
-
-
-
-		
+		}	
 	}
 
 
-	Mat MainWindow::delete_roi(Mat &src, int &x, int &y, int &w, int &h)
-	{
-		for (int i = x; i < x+w; i++)
-			for (int j = y; j < y+h; j++)
-				for (int n = 0; n < src.channels(); n++)
-			{
-				src.at<uchar>(i, j*src.channels() + n) = 255;
-
-			}
-		imshow("sss", src);
-		return src;
-	}
-
-	//
 	Mat MainWindow::cut_name_img(const Mat &src)
 	{
 		Mat roi_img;
@@ -1027,22 +555,17 @@ void MainWindow::on_pushButton2_clicked()
 		Rect imgr(x,y,w,h);
 
 		cv::rectangle(resize_src, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
-	//	imshow("defd", name_src);
 		resize_src(imgr).copyTo(roi_img); //拷贝矩形区域
-	/*	cv::resize(name_src, name_src, Size(856*0.5, 540*0.5));*/
-		//imshow("sss",roi_img);
 		return roi_img;
 	}
 
 	void MainWindow::get_name(const Mat &src)
 	{
 		Mat name_roi = cut_name_img(src);
-	//	imshow("sss", name_roi);
+	
 		cvtColor(name_roi, name_roi, CV_RGB2GRAY);
 		//模糊降噪
 		blur(name_roi, name_roi, Size(2, 2));
-		//imshow("defd", name_roi);
-
 		tesseract::TessBaseAPI tess;
 		tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
 		tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
@@ -1052,55 +575,11 @@ void MainWindow::on_pushButton2_clicked()
 		char* outt = "";
 		outt = tess.GetUTF8Text();
 
-		QString aa(outt);
-		ui->name_lineEdit->setText(aa);
+		QString name(outt);
+		name = name.simplified();
+		
+		ui->name_lineEdit->setText(name);
 	}
-
-
-
-	Mat MainWindow::cut_sex_img(const Mat &src)
-	{
-		Mat roi_img;
-		Mat sex_src = src;
-		Mat resize_src;
-		cv::resize(sex_src, resize_src, Size(856, 540));
-
-		int x = 150;
-		int y = 115;
-		int w = 85;
-		int h = 70;
-		Rect imgr(x, y, w, h);
-
-		cv::rectangle(resize_src, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
-		imshow("defd", resize_src);
-		resize_src(imgr).copyTo(roi_img); //拷贝矩形区域
-		/*	cv::resize(name_src, name_src, Size(856*0.5, 540*0.5));*/
-	//	imshow("sss",roi_img);
-		return roi_img;
-	}
-
-	void MainWindow::get_sex(const Mat &src)
-	{
-		Mat sex_roi = cut_sex_img(src);
-			imshow("sss", sex_roi);
-		cvtColor(sex_roi, sex_roi, CV_RGB2GRAY);
-		//模糊降噪
-		blur(sex_roi, sex_roi, Size(2, 2));
-		//imshow("defd", name_roi);
-
-		tesseract::TessBaseAPI tess;
-		tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-		tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
-		tess.SetImage((uchar*)sex_roi.data,sex_roi.cols, sex_roi.rows, 1, sex_roi.cols);
-
-		/* Get the text*/
-		char* outt = "";
-		outt = tess.GetUTF8Text();
-
-		QString aa(outt);
-		ui->sex_lineEdit->setText(aa);
-	}
-
 
 	Mat MainWindow::cut_add_img(const Mat &src)
 	{
@@ -1114,36 +593,86 @@ void MainWindow::on_pushButton2_clicked()
 		int w = 382;
 		int h = 145;
 
-
-		
 		Rect imgr(x, y, w, h);
 
 		cv::rectangle(resize_src, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
-		imshow("defd", resize_src);
 		resize_src(imgr).copyTo(roi_img); //拷贝矩形区域
-		/*	cv::resize(name_src, name_src, Size(856*0.5, 540*0.5));*/
-		//	imshow("sss",roi_img);
 		return roi_img;
 	}
 
 	void MainWindow::get_add(const Mat &src)
 	{
 		Mat add_roi = cut_add_img(src);
-		imshow("sss", add_roi);
+		
+		int w = add_roi.cols*0.8;
+		int h = add_roi.rows*0.8;
+		cv::resize(add_roi, add_roi,Size(w,h));
 		cvtColor(add_roi, add_roi, CV_RGB2GRAY);
+		add_roi = Ada_Thresgold(add_roi);
 		//模糊降噪
 		blur(add_roi, add_roi, Size(2, 2));
-		//imshow("defd", name_roi);
+		
+		tesseract::TessBaseAPI tess;
+		tess.Init(NULL, "add+chi_sim", tesseract::OEM_DEFAULT);
+		tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
+		tess.SetImage((uchar*)add_roi.data, add_roi.cols, add_roi.rows, 1, add_roi.cols);
 
-		//tesseract::TessBaseAPI tess;
-		//tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
-		//tess.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
-		//tess.SetImage((uchar*)add_roi.data, add_roi.cols, add_roi.rows, 1, add_roi.cols);
+		/* Get the text*/
+		char* outt = "";
+		outt = tess.GetUTF8Text();
 
-		///* Get the text*/
-		//char* outt = "";
-		//outt = tess.GetUTF8Text();
+		QString aa(outt);
+		ui->add_textEdit->setText(aa);
+	}
 
-		//QString aa(outt);
-		//ui->add_textEdit->setText(aa);
+	Mat MainWindow::cut_nation_img(const Mat &src)
+	{
+		Mat roi_img;
+		Mat add_src = src;
+		Mat resize_src;
+		cv::resize(add_src, resize_src, Size(856, 540));
+
+		int x = 335;
+		int y = 115;
+		int w = 85;
+		int h = 70;
+
+		Rect imgr(x, y, w, h);
+		cv::rectangle(resize_src, imgr, Scalar(0, 255, 0), 1, 8, 0);//绘制方框
+		resize_src(imgr).copyTo(roi_img); //拷贝矩形区域
+		return roi_img;
+	}
+
+	void MainWindow::get_nation(const Mat &src)
+	{
+		Mat nation_roi = cut_nation_img(src);
+		cvtColor(nation_roi, nation_roi, CV_RGB2GRAY);
+		//模糊降噪
+		blur(nation_roi, nation_roi, Size(2, 2));
+
+		tesseract::TessBaseAPI tess;
+		tess.Init(NULL, "chi_sim", tesseract::OEM_DEFAULT);
+		tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
+		tess.SetImage((uchar*)nation_roi.data, nation_roi.cols, nation_roi.rows, 1, nation_roi.cols);
+
+		/* Get the text*/
+		char* outt = "";
+		outt = tess.GetUTF8Text();
+
+		QString aa(outt);
+		ui->mz_lineEdit->setText(aa);
+	}
+
+	void MainWindow::tess_test(const Mat& src){
+	
+		tesseract::TessBaseAPI tess;
+		tess.Init(NULL, "chi_sim + eng", tesseract::OEM_DEFAULT);
+		tess.SetPageSegMode(tesseract::PSM_SINGLE_LINE);
+		tess.SetImage((uchar*)src.data, src.cols, src.rows, 1,src.cols);
+
+		// Get the text
+		char* number_out = tess.GetUTF8Text();
+		QString id_number(number_out);
+	
+		ui->number_lineEdit->setText(id_number);
 	}
